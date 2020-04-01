@@ -13,6 +13,14 @@
  *  C = 0,1
  *  D = 15,1
  */
+#include <EEPROM.h>
+/*
+ * https://www.arduino.cc/en/Tutorial/EEPROMRead
+ * 1024 bytes of storage
+ * int        = 2 Bytes
+ * long       = 4 Bytes
+ * long long  = 8 Bytes
+ */
 
 // initialize the library by associating any needed LCD interface pin with the arduino pin number it is connected to
 const int rs = 12;
@@ -141,7 +149,9 @@ void solenoidOff(){
 }
 
 void setup() {
+  Serial.begin(9600);
   lcd.begin(16, 2);
+
 
   // Initialize all pins
   pinMode(mode, INPUT);
@@ -152,9 +162,7 @@ void setup() {
   pinMode(secondarySensor0, INPUT);
   pinMode(secondarySensor1, INPUT);
   pinMode(pumpControl, OUTPUT);
-  pinMode(solenoidControl, OUTPUT); 
-
-  Serial.begin(9600);
+  pinMode(solenoidControl, OUTPUT);  
 }
 
 void loop() {
@@ -164,10 +172,6 @@ void loop() {
   // print the number of seconds since reset:
   lcd.print(millis() / 1000);
 }
-
-
-
-
 
 
 
