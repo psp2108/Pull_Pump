@@ -20,6 +20,8 @@
  * int        = 2 Bytes
  * long       = 4 Bytes
  * long long  = 8 Bytes
+ * 
+ * 10000 Write Cycles in total so it is recommended to use put() function in 5 or 10 minutes interval
  */
 
 // initialize the library by associating any needed LCD interface pin with the arduino pin number it is connected to
