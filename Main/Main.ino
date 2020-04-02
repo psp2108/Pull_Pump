@@ -40,6 +40,13 @@ const int mode = 6;
 const int increment = 7;
 const int decrement = 8;
 const int setTime = 9;
+// Parameters to be in settime sub-mode
+long subModeCountStart = -1;
+long subModeCountEnd = -1;
+const int subModeInterval = 3000;
+// Time Counter Variable
+int countDown = 0; // Assign from EPROM
+int maxTime = 300 + 10;
 
 // Sensor 1
 const int primarySensor = 10;
@@ -55,9 +62,11 @@ const int pumpControl = 13;
 const int solenoidControl = A0;
 
 // Parameters to check the off time of pump
-long long offCountStart = -1;
-long long offCountEnd = -1;
+long offCountStart = -1;
+long offCountEnd = -1;
 const int offInterval = 5000;
+
+const int drainOffTime = 5000;
 
 bool isAutoMode(){
   return digitalRead(mode) == 1;
@@ -71,8 +80,8 @@ bool getSecondarySensor(){
   return digitalRead(primarySensor) == 1;
 }
 
-long long getSecondsPassed(){
-  return( millis() / 1000)
+long getSecondsPassed(){
+  return( millis() / 1000);
 }
 
 void lcdPrint(bool clearScr, String text, String pos="tl"){
@@ -147,6 +156,20 @@ void lcdPrint(String text, String pos="tl"){
   }
 }
 
+bool solenoidOpen(bool fromOff = false){
+  // True means turning solenoid open
+  bool state = true;
+  bool currentState = digitalRead(solenoidControl);
+  if(fromOff){
+    state = !state;
+  }
+  digitalWrite(solenoidControl, state);
+  return state != currentState;
+}
+bool solenoidClose(){
+  return solenoidOpen(true);
+}
+
 bool pumpOn(bool fromOff = false){
   // True means turning pump on
   bool state = true;
@@ -163,20 +186,6 @@ bool pumpOn(bool fromOff = false){
 }
 bool pumpOff(){
   return pumpOn(true);
-}
-
-bool solenoidOpen(bool fromOff = false){
-  // True means turning solenoid open
-  bool state = true;
-  bool currentState = digitalRead(solenoidControl);
-  if(fromOff){
-    state = !state;
-  }
-  digitalWrite(solenoidControl, state);
-  return state != currentState;
-}
-bool solenoidClose(){
-  return solenoidOpen(true);
 }
 
 void setup() {
@@ -204,9 +213,9 @@ void preStepsPumpOff(){
     offCountEnd = getSecondsPassed();
     // Condition check for bubbles
     if(offCountEnd - offCountStart > offInterval){
-      pumpOff()
+      pumpOff();
       // Contition check to drain off water
-      delay(5000);
+      delay(drainOffTime);
       offCountStart = -1;
       offCountEnd = -1;
     }
@@ -229,7 +238,6 @@ void loop() {
         // Delay to reach the water till output point
         delay(5000);
       }
-     
             
       if(getSecondarySensor()){
         offCountStart = -1;
@@ -247,6 +255,54 @@ void loop() {
   }
   else{
     // Counter Mode Write logic later
+    if(digitalRead(setTime)){
+      // Enter into set time mode
+      subModeCountStart = getSecondsPassed();
+
+      while(true){
+
+        if(digitalRead(increment)){
+          countDown = (countDown + 10) % maxTime;
+          delay(100);
+          subModeCountStart = getSecondsPassed();
+        }
+        if(digitalRead(decrement)){
+          countDown = (countDown - 10) % maxTime;
+          delay(100);
+          subModeCountStart = getSecondsPassed();
+        }
+        if(digitalRead(setTime)){
+          // Save countDown to EEPROM
+          delay(100);
+          break;
+        }
+
+        subModeCountEnd = getSecondsPassed();
+
+        if(subModeCountEnd - subModeCountStart > subModeInterval){
+          // Save countDown to EEPROM
+          break;
+        }
+      }
+    }
+    else{
+      // Simple count on time till limit reached
+      if(getPrimarySensor()){
+        if(pumpOn()){
+          offCountStart = getSecondsPassed();
+        }
+        offCountEnd = getSecondsPassed();
+        if(offCountEnd - offCountStart > countDown * 60){
+          pumpOff();
+          delay(drainOffTime);
+        }
+      }
+      else{
+        pumpOff();
+        offCountStart = -1;
+        offCountEnd = -1;
+      }
+    }
   }
 }
 
