@@ -54,6 +54,27 @@ const int pumpControl = 13;
 // solenoid Control
 const int solenoidControl = A0;
 
+// Parameters to check the off time of pump
+long long offCountStart = -1;
+long long offCountEnd = -1;
+const int offInterval = 5000;
+
+bool isAutoMode(){
+  return digitalRead(mode) == 1;
+}
+
+bool getPrimarySensor(){
+  return digitalRead(primarySensor) == 1;
+}
+
+bool getSecondarySensor(){
+  return digitalRead(primarySensor) == 1;
+}
+
+long long getSecondsPassed(){
+  return( millis() / 1000)
+}
+
 void lcdPrint(bool clearScr, String text, String pos="tl"){
   if (clearScr){
     lcd.clear();
@@ -126,28 +147,36 @@ void lcdPrint(String text, String pos="tl"){
   }
 }
 
-void pumpOn(bool fromOff = false){
+bool pumpOn(bool fromOff = false){
   // True means turning pump on
   bool state = true;
+  bool currentState = digitalRead(pumpControl);
   if(fromOff){
     state = !state;
+    solenoidOpen();
+  }
+  else{
+    solenoidClose();
   }
   digitalWrite(pumpControl, state);
+  return state != currentState;
 }
-void pumpOff(){
-  pumpOn(true);
+bool pumpOff(){
+  return pumpOn(true);
 }
 
-void solenoidOn(bool fromOff = false){
-  // True means turning pump on
+bool solenoidOpen(bool fromOff = false){
+  // True means turning solenoid open
   bool state = true;
+  bool currentState = digitalRead(solenoidControl);
   if(fromOff){
     state = !state;
   }
   digitalWrite(solenoidControl, state);
+  return state != currentState;
 }
-void solenoidOff(){
-  solenoidOn(true);
+bool solenoidClose(){
+  return solenoidOpen(true);
 }
 
 void setup() {
@@ -167,12 +196,58 @@ void setup() {
   pinMode(solenoidControl, OUTPUT);  
 }
 
+void preStepsPumpOff(){
+  if(offCountStart == -1){
+    offCountStart = getSecondsPassed();
+  }
+  else{
+    offCountEnd = getSecondsPassed();
+    // Condition check for bubbles
+    if(offCountEnd - offCountStart > offInterval){
+      pumpOff()
+      // Contition check to drain off water
+      delay(5000);
+      offCountStart = -1;
+      offCountEnd = -1;
+    }
+  }
+}
+
 void loop() {
   // set the cursor to column 0, line 1
   // (note: line 1 is the second row, since counting begins with 0):
   lcd.setCursor(0, 1); //Column, Row
   // print the number of seconds since reset:
-  lcd.print(millis() / 1000);
+  lcd.print(getSecondsPassed());
+
+
+  if (isAutoMode()){
+    // Auto Mode
+
+    if(getPrimarySensor()){
+      if(pumpOn()){
+        // Delay to reach the water till output point
+        delay(5000);
+      }
+     
+            
+      if(getSecondarySensor()){
+        offCountStart = -1;
+        offCountEnd = -1;
+
+        // Time log on Counter
+      }
+      else{
+        preStepsPumpOff();
+      }
+    }
+    else{
+      preStepsPumpOff();
+    }
+  }
+  else{
+    // Counter Mode Write logic later
+  }
 }
 
 
