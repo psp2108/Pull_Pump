@@ -34,16 +34,13 @@ const int d6 = 8;
 const int d7 = 7;
 
 // Sensor 1
-const int primarySensor = A0;
+const int primarySensor = 14;//A0;
 
 // Sensor 2
-const int secondarySensor = A1;
+const int secondarySensor = 15;//A1;
 
 // Pump Control
-const int pumpControl = A6;
-
-// solenoid Control
-const int solenoidControl = A5;
+const int pumpControl = 20;//A6;
 
 // reset the pump after dry return
 const int resetPump = 13;
@@ -58,23 +55,41 @@ long offCountStart = -1;
 long offCountEnd = -1;
 const int offInterval = 5000;
 
-bool pumpReady = true;      // Get from EEPROM
-bool pumDrained = false;    // Get from EEPROM
-long resetCountStart = -1;
-long resetCountEnd = -1;
-const int resetInterval = 10;
-const int drainOffTime = 5000;
+      bool pumpReady = true;      // Get from EEPROM
+      bool pumpDrained = false;    // Get from EEPROM
+      long countStart = -1;
+      long countEnd = -1;
+      const int resetInterval = 10;
+      const int drainOffTime = 5000;    // To check if pump need manual assistant
 
-String blankText = "";
+      String blankText = "";
+
+
 
 // Status
 String statusCodes[] = {
-//"OOOOOOOOOOOOOOOO"
-  "Empering needed",    //0
-  "Reseting in "       //1
+
+/* -- *///"OOOOOOOOOOOOOOOO"
+/* 00 */  "Pump Drained",
+/* 01 */  "Reseting in ", 
+/* 02 */  "Turning Pump on",
+/* 03 */  "Drain check ",  
+/* 04 */  "Pump Idle",  
+/* 05 */  "Pump Running",  
+/* 06 */  "Time 00:00:00",  
 };
 
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+
+void updatePumpDrained(bool state){
+  // Store in to EEPROM
+  pumpDrained = state;
+}
+
+void updatePumpReady(bool state){
+  // Store in to EEPROM
+  pumpReady = state;
+}
 
 bool getPrimarySensor(){ 
   // Put not (!) if it is active low
@@ -159,30 +174,12 @@ void lcdPrint(String text, String pos="tl"){
   }
 }
 
-bool solenoidOpen(bool fromOff = false){
-  // True means turning solenoid open
-  bool state = true;
-  bool currentState = digitalRead(solenoidControl);
-  if(fromOff){
-    state = !state;
-  }
-  digitalWrite(solenoidControl, state);
-  return state != currentState;
-}
-bool solenoidClose(){
-  return solenoidOpen(true);
-}
-
 bool pumpOn(bool fromOff = false){
   // True means turning pump on
   bool state = true;
   bool currentState = digitalRead(pumpControl);
   if(fromOff){
     state = !state;
-    solenoidOpen();
-  }
-  else{
-    solenoidClose();
   }
   digitalWrite(pumpControl, state);
   return state != currentState;
@@ -197,11 +194,9 @@ void setup() {
 
 
   // Initialize all pins
-  pinMode(primarySensor0, INPUT);
-  pinMode(primarySensor1, INPUT);
+  pinMode(primarySensor, INPUT);
   pinMode(secondarySensor, INPUT);
-  pinMode(pumpControl, OUTPUT);
-  pinMode(solenoidControl, OUTPUT);  
+  pinMode(pumpControl, OUTPUT); 
 
   for(int i=0; i<16;i ++){
     blankText += " ";
@@ -226,23 +221,57 @@ void preStepsPumpOff(){
 }
 
 void loop() {
-  if(!pumDrained){
+  if(!pumpDrained){
+    if(pumpReady){
+      if(getPrimarySensor()){
+        pumpOn();
+        updatePumpReady(false);
+        lcdPrint(true, statusCodes[2], "tl");
+        
+        countStart = getSecondsPassed();
 
+        // Checking pump drain condition
+        while(!getSecondarySensor()){
+          countEnd = getSecondsPassed();
+          int timeLeft = drainOffTime - countEnd + countStart;
+          lcdPrint(statusCodes[3] + timeLeft, "bl");
+          if (timeLeft < 0){
+            // Pump Drained
+            updatePumpDrained(true);
+            return;
+          }
+        }
+        // LOOP exit means pump running proper
+      }
+      else{
+        // Display time of last run
+        lcdPrint(true, statusCodes[4], "tm");
+      }
+    }
+    else{
+      //Either pump is running or water is draining
+      if(getSecondarySensor()){
+        // Pump is running
+        lcdPrint(statusCodes[5], "tm");
+      }
+
+    }
   }
   else{
+    pumpOff();
     lcdPrint(true, statusCodes[0], "tm");
     if(digitalRead(resetPump)){
 
       digitalWrite(powerLED, 1);
-      resetCountStart = getSecondsPassed();;
+      countStart = getSecondsPassed();;
 
       while(digitalRead(resetPump)){
-        resetCountEnd = getSecondsPassed();
-        int timeLeft = resetInterval - resetCountEnd + resetCountStart;
-        lcdPrint(statusCodes[1] + timeLeft, "tm");
+        countEnd = getSecondsPassed();
+        int timeLeft = resetInterval - countEnd + countStart;
+        lcdPrint(statusCodes[1] + timeLeft, "bm");
         if(timeLeft < 0){
-          // Write to EEPROM
-          pumDrained = false;
+          updatePumpDrained(false);
+          updatePumpReady(true);
           while(digitalRead(resetPump)){}
         }
       }
