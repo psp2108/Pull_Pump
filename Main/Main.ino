@@ -24,39 +24,48 @@
  * 10000 Write Cycles in total so it is recommended to use put() function in 5 or 10 minutes interval
  */
 
-// initialize the library by associating any needed LCD interface pin with the arduino pin number it is connected to
+/////////////////////// PIN SECTION ///////////////////////
+// LCD interface pins
 const int rs = 12;
 const int en = 11;
-const int d4 = 5;
-const int d5 = 4;
-const int d6 = 3;
-const int d7 = 2;
-LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+const int d4 = 10;
+const int d5 = 9;
+const int d6 = 8;
+const int d7 = 7;
 
 // Sensor 1
-const int primarySensor0 = 10;
-const int primarySensor1 = 11;
+const int primarySensor = A0;
 
 // Sensor 2
-const int secondarySensor = 12;
+const int secondarySensor = A1;
 
 // Pump Control
-const int pumpControl = 13;
-bool pumpReady = true;      // Get from EPROM
+const int pumpControl = A6;
+
 // solenoid Control
-const int solenoidControl = A0;
+const int solenoidControl = A5;
+
+// reset the pump after dry return
+const int resetPump = 13;
+
+// indication LEDs
+const int powerLED = 6;
+const int pumpRunningLED = 5;
+///////////////////////////////////////////////////////////
 
 // Parameters to check the off time of pump
 long offCountStart = -1;
 long offCountEnd = -1;
 const int offInterval = 5000;
 
+bool pumpReady = true;      // Get from EPROM
 const int drainOffTime = 5000;
+
+LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
 bool getPrimarySensor(){ 
   // Put not (!) if it is active low
-  bool state1 = digitalRead(primarySensor0);
-  bool state2 = digitalRead(primarySensor1);
+  return digitalRead(primarySensor);
 }
 
 bool getSecondarySensor(){
@@ -177,9 +186,6 @@ void setup() {
 
 
   // Initialize all pins
-  pinMode(increment, INPUT);
-  pinMode(decrement, INPUT);
-  pinMode(setTime, INPUT);
   pinMode(primarySensor0, INPUT);
   pinMode(primarySensor1, INPUT);
   pinMode(secondarySensor, INPUT);
