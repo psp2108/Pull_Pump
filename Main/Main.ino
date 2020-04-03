@@ -33,31 +33,16 @@ const int d6 = 3;
 const int d7 = 2;
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
-// Mode Selector
-const int mode = 6;
-
-// Timmer Control
-const int increment = 7;
-const int decrement = 8;
-const int setTime = 9;
-// Parameters to be in settime sub-mode
-long subModeCountStart = -1;
-long subModeCountEnd = -1;
-const int subModeInterval = 3000;
-// Time Counter Variable
-int countDown = 0; // Assign from EPROM
-int maxTime = 300 + 10;
-
 // Sensor 1
-const int primarySensor = 10;
+const int primarySensor0 = 10;
+const int primarySensor1 = 11;
 
 // Sensor 2
-const int secondarySensor0 = 11;
-const int secondarySensor1 = 12;
+const int secondarySensor = 12;
 
 // Pump Control
 const int pumpControl = 13;
-
+bool pumpReady = true;      // Get from EPROM
 // solenoid Control
 const int solenoidControl = A0;
 
@@ -68,16 +53,14 @@ const int offInterval = 5000;
 
 const int drainOffTime = 5000;
 
-bool isAutoMode(){
-  return digitalRead(mode) == 1;
-}
-
-bool getPrimarySensor(){
-  return digitalRead(primarySensor) == 1;
+bool getPrimarySensor(){ 
+  // Put not (!) if it is active low
+  bool state1 = digitalRead(primarySensor0);
+  bool state2 = digitalRead(primarySensor1);
 }
 
 bool getSecondarySensor(){
-  return digitalRead(primarySensor) == 1;
+  return digitalRead(secondarySensor) == 1;
 }
 
 long getSecondsPassed(){
@@ -194,13 +177,12 @@ void setup() {
 
 
   // Initialize all pins
-  pinMode(mode, INPUT);
   pinMode(increment, INPUT);
   pinMode(decrement, INPUT);
   pinMode(setTime, INPUT);
-  pinMode(primarySensor, INPUT);
-  pinMode(secondarySensor0, INPUT);
-  pinMode(secondarySensor1, INPUT);
+  pinMode(primarySensor0, INPUT);
+  pinMode(primarySensor1, INPUT);
+  pinMode(secondarySensor, INPUT);
   pinMode(pumpControl, OUTPUT);
   pinMode(solenoidControl, OUTPUT);  
 }
@@ -229,97 +211,25 @@ void loop() {
   // print the number of seconds since reset:
   lcd.print(getSecondsPassed());
 
+  // Auto Mode
 
-  if (isAutoMode()){
-    // Auto Mode
+  if(getPrimarySensor()){
+    if(pumpOn()){
+      // Delay to reach the water till output point
+      delay(5000);
+    }
+          
+    if(getSecondarySensor()){
+      offCountStart = -1;
+      offCountEnd = -1;
 
-    if(getPrimarySensor()){
-      if(pumpOn()){
-        // Delay to reach the water till output point
-        delay(5000);
-      }
-            
-      if(getSecondarySensor()){
-        offCountStart = -1;
-        offCountEnd = -1;
-
-        // Time log on Counter
-      }
-      else{
-        preStepsPumpOff();
-      }
+      // Time log on Counter
     }
     else{
       preStepsPumpOff();
     }
   }
   else{
-    // Counter Mode Write logic later
-    if(digitalRead(setTime)){
-      // Enter into set time mode
-      subModeCountStart = getSecondsPassed();
-
-      while(true){
-
-        if(digitalRead(increment)){
-          countDown = (countDown + 10) % maxTime;
-          delay(100);
-          subModeCountStart = getSecondsPassed();
-        }
-        if(digitalRead(decrement)){
-          countDown = (countDown - 10) % maxTime;
-          delay(100);
-          subModeCountStart = getSecondsPassed();
-        }
-        if(digitalRead(setTime)){
-          // Save countDown to EEPROM
-          delay(100);
-          break;
-        }
-
-        subModeCountEnd = getSecondsPassed();
-
-        if(subModeCountEnd - subModeCountStart > subModeInterval){
-          // Save countDown to EEPROM
-          break;
-        }
-      }
-    }
-    else{
-      // Simple count on time till limit reached
-      if(getPrimarySensor()){
-        if(pumpOn()){
-          offCountStart = getSecondsPassed();
-        }
-        offCountEnd = getSecondsPassed();
-        if(offCountEnd - offCountStart > countDown * 60){
-          pumpOff();
-          delay(drainOffTime);
-        }
-      }
-      else{
-        pumpOff();
-        offCountStart = -1;
-        offCountEnd = -1;
-      }
-    }
+    preStepsPumpOff();
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
