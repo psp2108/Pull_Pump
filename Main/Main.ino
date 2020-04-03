@@ -43,11 +43,12 @@ const int secondarySensor = 15;//A1;
 const int pumpControl = 20;//A6;
 
 // reset the pump after dry return
-const int resetPump = 13;
+// const int resetPump = 13;
 
 // indication LEDs
 const int powerLED = 6;
 const int pumpRunningLED = 5;
+const int drainLED = 4;
 ///////////////////////////////////////////////////////////
 
 // Parameters to check the off time of pump
@@ -64,25 +65,29 @@ const int offInterval = 5000;
 
       String blankText = "";
 
-
+      String currentTextOnLCD = "";
+      bool bottomFill = false;
 
 // Status
 String statusCodes[] = {
 
 /* -- *///"OOOOOOOOOOOOOOOO"
 /* 00 */  "Pump Drained",
-/* 01 */  "Reseting in ", 
+/* 01 */  "Reseting in ",   // Not used
 /* 02 */  "Turning Pump on",
 /* 03 */  "Drain check ",  
 /* 04 */  "Pump Idle",  
 /* 05 */  "Pump Running",  
 /* 06 */  "Time 00:00:00",  
+/* 07 */  "Draining Water",  
+/* -- *///"OOOOOOOOOOOOOOOO"
 };
 
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
 void updatePumpDrained(bool state){
   // Store in to EEPROM
+  // 04-04-2020 2:30 AM UPDATE -> Dont store it on EEPROM
   pumpDrained = state;
 }
 
@@ -104,38 +109,41 @@ long getSecondsPassed(){
   return( millis() / 1000);
 }
 
-void lcdPrint(bool clearScr, String text, String pos="tl"){
-  if (clearScr){
-    lcd.clear();
+String getN(int n, String dummy = " "){
+  String text = "";
+  while (text.length() < n){
+    text = text + dummy;
   }
-  lcdPrint(text, pos);
+  return text;
 }
+
 /*
  * tl    tm      tr
  * bl    bm      br
 */
 void lcdPrint(String text, String pos="tl"){
-  int len = text.length();
+  int len = text.length() <= 16 ? text.length() : 16;
+  text = text + blankText;
+  String temp = "";
   
   switch (pos[0]){
     case 't':
       
       lcd.setCursor(0, 0);
-      lcd.print(blankText);
       switch (pos[1]) {
         case 'l':
-          lcd.setCursor(0, 0);
-          lcd.print(text);
+          temp = text;
+          lcd.print(temp);
           Serial.println("Inside Top Left");
           break;
         case 'm':
-          lcd.setCursor((len % 2 == 0? 8 - (len/2): 7 - (len/2)), 0);
-          lcd.print(text);
+          temp = getN((len % 2 == 0? 8 - (len/2): 7 - (len/2))) + text;
+          lcd.print(temp);
           Serial.println("Inside Top Middle");
           break;
         case 'r':
-          lcd.setCursor(16-len, 0);
-          lcd.print(text);
+          temp = getN(16-len) + text;
+          lcd.print(temp);
           Serial.println("Inside Top Right");
           break;
         default:
@@ -144,23 +152,22 @@ void lcdPrint(String text, String pos="tl"){
       }
       break;
     case 'b':
-    
+      bottomFill = true;
       lcd.setCursor(0, 1);
-      lcd.print(blankText);
       switch (pos[1]) {
         case 'l':
-          lcd.setCursor(0, 1);
-          lcd.print(text);
+          temp = text;
+          lcd.print(temp);
           Serial.println("Inside Bottom Left");
           break;
         case 'm':
-          lcd.setCursor((len % 2 == 0? 8 - (len/2): 7 - (len/2)), 1);
-          lcd.print(text);
+          temp = getN((len % 2 == 0? 8 - (len/2): 7 - (len/2))) + text;
+          lcd.print(temp);
           Serial.println("Inside Bottom Middle");
           break;
         case 'r':
-          lcd.setCursor(16-len, 1);
-          lcd.print(text);
+          temp = getN(16-len) + text;
+          lcd.print(temp);
           Serial.println("Inside Bottom Right");
           break;
         default:
@@ -174,6 +181,17 @@ void lcdPrint(String text, String pos="tl"){
   }
 }
 
+void lcdClearPrint(String text, String pos="tl"){
+  Serial.println("Second LCD Print");
+  if (text != currentTextOnLCD || bottomFill){
+    Serial.println("Cleared");
+    lcd.clear();
+    currentTextOnLCD = text;
+    bottomFill = false;
+  }
+  lcdPrint(text, pos);
+}
+
 bool pumpOn(bool fromOff = false){
   // True means turning pump on
   bool state = true;
@@ -182,6 +200,7 @@ bool pumpOn(bool fromOff = false){
     state = !state;
   }
   digitalWrite(pumpControl, state);
+  digitalWrite(pumpRunningLED, !fromOff);
   return state != currentState;
 }
 bool pumpOff(){
@@ -197,6 +216,10 @@ void setup() {
   pinMode(primarySensor, INPUT);
   pinMode(secondarySensor, INPUT);
   pinMode(pumpControl, OUTPUT); 
+  // pinMode(resetPump, OUTPUT); 
+  pinMode(powerLED, OUTPUT); 
+  pinMode(pumpRunningLED, OUTPUT); 
+  pinMode(drainLED, OUTPUT); 
 
   for(int i=0; i<16;i ++){
     blankText += " ";
@@ -213,6 +236,7 @@ void preStepsPumpOff(){
     if(offCountEnd - offCountStart > offInterval){
       pumpOff();
       // Contition check to drain off water
+      lcdPrint(statusCodes[7], "tm");
       delay(drainOffTime);
       offCountStart = -1;
       offCountEnd = -1;
@@ -226,7 +250,7 @@ void loop() {
       if(getPrimarySensor()){
         pumpOn();
         updatePumpReady(false);
-        lcdPrint(true, statusCodes[2], "tl");
+        lcdPrint(statusCodes[2], "tl");
         
         countStart = getSecondsPassed();
 
@@ -244,40 +268,55 @@ void loop() {
         // LOOP exit means pump running proper
       }
       else{
+        lcdPrint(statusCodes[4], "tm");        
         // Display time of last run
-        lcdPrint(true, statusCodes[4], "tm");
+        lcdPrint(statusCodes[6], "bm");        
       }
     }
     else{
       //Either pump is running or water is draining
       if(getSecondarySensor()){
         // Pump is running
-        lcdPrint(statusCodes[5], "tm");
+        lcdPrint(statusCodes[5], "tm");    
+        // Display Current Time
+        lcdPrint(statusCodes[6], "bm");     
+      }
+      else{
+        // Wait some time to drain water and then turn pump off
       }
 
     }
   }
   else{
     pumpOff();
-    lcdPrint(true, statusCodes[0], "tm");
-    if(digitalRead(resetPump)){
-
-      digitalWrite(powerLED, 1);
-      countStart = getSecondsPassed();;
-
-      while(digitalRead(resetPump)){
-        countEnd = getSecondsPassed();
-        int timeLeft = resetInterval - countEnd + countStart;
-        lcdPrint(statusCodes[1] + timeLeft, "bm");
-        if(timeLeft < 0){
-          updatePumpDrained(false);
-          updatePumpReady(true);
-          while(digitalRead(resetPump)){}
-        }
-      }
+    lcdClearPrint(statusCodes[0], "tm");
+    updatePumpReady(true);
+    while (true) {
+      digitalWrite(drainLED, 1);
+      delay(1000);
+      digitalWrite(drainLED, 0);
+      delay(500);
     }
-    else{
-      digitalWrite(powerLED, 0);
-    }
+    // pumpOff();
+    // lcdClearPrint(statusCodes[0], "tm");
+    // if(digitalRead(resetPump)){
+
+    //   digitalWrite(powerLED, 1);
+    //   countStart = getSecondsPassed();;
+
+    //   while(digitalRead(resetPump)){
+    //     countEnd = getSecondsPassed();
+    //     int timeLeft = resetInterval - countEnd + countStart;
+    //     lcdPrint(statusCodes[1] + timeLeft, "bm");
+    //     if(timeLeft < 0){
+    //       updatePumpDrained(false);
+    //       updatePumpReady(true);
+    //       while(digitalRead(resetPump)){}
+    //     }
+    //   }
+    // }
+    // else{
+    //   digitalWrite(powerLED, 0);
+    // }
   }
 }
