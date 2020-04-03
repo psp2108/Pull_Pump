@@ -58,8 +58,21 @@ long offCountStart = -1;
 long offCountEnd = -1;
 const int offInterval = 5000;
 
-bool pumpReady = true;      // Get from EPROM
+bool pumpReady = true;      // Get from EEPROM
+bool pumDrained = false;    // Get from EEPROM
+long resetCountStart = -1;
+long resetCountEnd = -1;
+const int resetInterval = 10;
 const int drainOffTime = 5000;
+
+String blankText = "";
+
+// Status
+String statusCodes[] = {
+//"OOOOOOOOOOOOOOOO"
+  "Empering needed",    //0
+  "Reseting in "       //1
+};
 
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
@@ -88,13 +101,12 @@ void lcdPrint(bool clearScr, String text, String pos="tl"){
 */
 void lcdPrint(String text, String pos="tl"){
   int len = text.length();
-  String blankText = "";
-  for(int i=0; i<16;i ++){
-    blankText += " ";
-  }
   
   switch (pos[0]){
     case 't':
+      
+      lcd.setCursor(0, 0);
+      lcd.print(blankText);
       switch (pos[1]) {
         case 'l':
           lcd.setCursor(0, 0);
@@ -102,8 +114,6 @@ void lcdPrint(String text, String pos="tl"){
           Serial.println("Inside Top Left");
           break;
         case 'm':
-          lcd.setCursor(0, 0);
-          lcd.print(blankText);
           lcd.setCursor((len % 2 == 0? 8 - (len/2): 7 - (len/2)), 0);
           lcd.print(text);
           Serial.println("Inside Top Middle");
@@ -119,6 +129,9 @@ void lcdPrint(String text, String pos="tl"){
       }
       break;
     case 'b':
+    
+      lcd.setCursor(0, 1);
+      lcd.print(blankText);
       switch (pos[1]) {
         case 'l':
           lcd.setCursor(0, 1);
@@ -126,8 +139,6 @@ void lcdPrint(String text, String pos="tl"){
           Serial.println("Inside Bottom Left");
           break;
         case 'm':
-          lcd.setCursor(0, 1);
-          lcd.print(blankText);
           lcd.setCursor((len % 2 == 0? 8 - (len/2): 7 - (len/2)), 1);
           lcd.print(text);
           Serial.println("Inside Bottom Middle");
@@ -191,6 +202,10 @@ void setup() {
   pinMode(secondarySensor, INPUT);
   pinMode(pumpControl, OUTPUT);
   pinMode(solenoidControl, OUTPUT);  
+
+  for(int i=0; i<16;i ++){
+    blankText += " ";
+  }
 }
 
 void preStepsPumpOff(){
@@ -211,31 +226,29 @@ void preStepsPumpOff(){
 }
 
 void loop() {
-  // set the cursor to column 0, line 1
-  // (note: line 1 is the second row, since counting begins with 0):
-  lcd.setCursor(0, 1); //Column, Row
-  // print the number of seconds since reset:
-  lcd.print(getSecondsPassed());
+  if(!pumDrained){
 
-  // Auto Mode
-
-  if(getPrimarySensor()){
-    if(pumpOn()){
-      // Delay to reach the water till output point
-      delay(5000);
-    }
-          
-    if(getSecondarySensor()){
-      offCountStart = -1;
-      offCountEnd = -1;
-
-      // Time log on Counter
-    }
-    else{
-      preStepsPumpOff();
-    }
   }
   else{
-    preStepsPumpOff();
+    lcdPrint(true, statusCodes[0], "tm");
+    if(digitalRead(resetPump)){
+
+      digitalWrite(powerLED, 1);
+      resetCountStart = getSecondsPassed();;
+
+      while(digitalRead(resetPump)){
+        resetCountEnd = getSecondsPassed();
+        int timeLeft = resetInterval - resetCountEnd + resetCountStart;
+        lcdPrint(statusCodes[1] + timeLeft, "tm");
+        if(timeLeft < 0){
+          // Write to EEPROM
+          pumDrained = false;
+          while(digitalRead(resetPump)){}
+        }
+      }
+    }
+    else{
+      digitalWrite(powerLED, 0);
+    }
   }
 }
