@@ -57,7 +57,8 @@ long offCountEnd = -1;
 const int offInterval = 5000;
 
       bool pumpReady = true;      // Get from EEPROM
-      bool pumpDrained = false;    // Get from EEPROM
+      bool pumpDrained = false;    // Get from EEPROM <Update dont get>
+      bool pumpRunning = false;   // Get from EEPROM
       long countStart = -1;
       long countEnd = -1;
       const int resetInterval = 10;
@@ -94,6 +95,11 @@ void updatePumpDrained(bool state){
 void updatePumpReady(bool state){
   // Store in to EEPROM
   pumpReady = state;
+}
+
+void updatePumpRunning(bool state){
+  // Store in to EEPROM
+  pumpRunning = state;
 }
 
 bool getPrimarySensor(){ 
@@ -201,6 +207,7 @@ bool pumpOn(bool fromOff = false){
   }
   digitalWrite(pumpControl, state);
   digitalWrite(pumpRunningLED, !fromOff);
+  updatePumpRunning(!fromOff);
   return state != currentState;
 }
 bool pumpOff(){
@@ -224,23 +231,12 @@ void setup() {
   for(int i=0; i<16;i ++){
     blankText += " ";
   }
-}
 
-void preStepsPumpOff(){
-  if(offCountStart == -1){
-    offCountStart = getSecondsPassed();
+  if (pumpRunning){
+    pumpOn();
   }
   else{
-    offCountEnd = getSecondsPassed();
-    // Condition check for bubbles
-    if(offCountEnd - offCountStart > offInterval){
-      pumpOff();
-      // Contition check to drain off water
-      lcdPrint(statusCodes[7], "tm");
-      delay(drainOffTime);
-      offCountStart = -1;
-      offCountEnd = -1;
-    }
+    pumpOff();
   }
 }
 
@@ -275,7 +271,7 @@ void loop() {
     }
     else{
       //Either pump is running or water is draining
-      if(getSecondarySensor()){
+      if(getSecondarySensor()){  // Failure Issue
         // Pump is running
         lcdPrint(statusCodes[5], "tm");    
         // Display Current Time
@@ -283,6 +279,22 @@ void loop() {
       }
       else{
         // Wait some time to drain water and then turn pump off
+        if(offCountStart == -1){
+          offCountStart = getSecondsPassed();
+        }
+        else{
+          offCountEnd = getSecondsPassed();
+          // Condition check for bubbles
+          if(offCountEnd - offCountStart > offInterval){
+            pumpOff();
+            // Contition check to drain off water
+            lcdPrint(statusCodes[7], "tm");
+            delay(drainOffTime);
+            updatePumpReady(true);
+            offCountStart = -1;
+            offCountEnd = -1;
+          }
+        }
       }
 
     }
