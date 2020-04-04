@@ -102,8 +102,6 @@ void updatePumpRunTime(long runTime, bool force = false){
   }
 }
 
-
-
 void setPumpDrained(){
   // Load from EEPROM
   // 04-04-2020 2:30 AM UPDATE -> Dont load from EEPROM
@@ -254,15 +252,13 @@ bool pumpOn(bool fromOff = false){
 }
 bool pumpOff(){
   pumpRunCountStart = -1;
-  pumpRunCountEnd = -1;
   return pumpOn(true);
 }
 
 void setup() {
   Serial.begin(9600);
   lcd.begin(16, 2);
-
-
+  
   // Initialize all pins
   pinMode(primarySensor, INPUT);
   pinMode(secondarySensor, INPUT);
