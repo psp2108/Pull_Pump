@@ -1,18 +1,4 @@
 #include <LiquidCrystal.h>
-/*
- * lcd.setCursor(<col>, <row>)
- * lcd.print()
- * 
- * ---------------------
- * 
- *  AOOOOOOOOOOOOOOB
- *  COOOOOOOOOOOOOOD
- *  
- *  A = 0,0
- *  B = 15,0
- *  C = 0,1
- *  D = 15,1
- */
 #include <EEPROM.h>
 /*
  * https://www.arduino.cc/en/Tutorial/EEPROMRead
@@ -56,18 +42,22 @@ long offCountStart = -1;
 long offCountEnd = -1;
 const int offInterval = 5000;
 
-      bool pumpReady = true;      // Get from EEPROM
-      bool pumpDrained = false;    // Get from EEPROM <Update dont get>
-      bool pumpRunning = false;   // Get from EEPROM
-      long countStart = -1;
-      long countEnd = -1;
-      const int resetInterval = 10;
-      const int drainOffTime = 5000;    // To check if pump need manual assistant
+bool pumpReady = true;      // Get from EEPROM
+bool pumpDrained = false;    // Get from EEPROM <Update dont get>
+bool pumpRunning = false;   // Get from EEPROM
+long pumpRunTime = 0;       // Get from EEPROM
+long pumpRunCountStart = -1;
+const int writeLimitInterval = 15 * 60;   // EEPROM has write cycle limit so write is done in every 15 minutes
 
-      String blankText = "";
+long countStart = -1;
+long countEnd = -1;
+const int resetInterval = 10;
+const int drainOffTime = 5000;    // To check if pump need manual assistant
 
-      String currentTextOnLCD = "";
-      bool bottomFill = false;
+String blankText = "";
+
+String currentTextOnLCD = "";
+bool bottomFill = false;
 
 // Status
 String statusCodes[] = {
@@ -79,8 +69,9 @@ String statusCodes[] = {
 /* 03 */  "Drain check ",  
 /* 04 */  "Pump Idle",  
 /* 05 */  "Pump Running",  
-/* 06 */  "Time 00:00:00",  
-/* 07 */  "Draining Water",  
+/* 06 */  "RunTime",  //"RunTime 00:00:00" 
+/* 07 */  "Draining Water",
+/* 08 */  "Lst Run",   //"LastRun 00:00:00" 
 /* -- *///"OOOOOOOOOOOOOOOO"
 };
 
@@ -100,6 +91,58 @@ void updatePumpReady(bool state){
 void updatePumpRunning(bool state){
   // Store in to EEPROM
   pumpRunning = state;
+}
+
+void updatePumpRunTime(long runTime, bool force = false){
+  pumpRunTime = runTime;
+
+  if (pumpRunTime % writeLimitInterval == 0 || force){
+    // Store in to EEPROM (condition check)
+
+  }
+}
+
+
+
+void setPumpDrained(){
+  // Load from EEPROM
+  // 04-04-2020 2:30 AM UPDATE -> Dont load from EEPROM
+}
+
+void setPumpReady(){
+  // Load from EEPROM
+}
+
+void setPumpRunning(){
+  // Load from EEPROM
+}
+
+void setPumpRunTime(){
+  // Store in to EEPROM (condition check)
+}
+
+String extraZero(byte num){
+  if(num < 10)
+    return "0";
+  else
+    return "";
+}
+
+String getFormattedTime(long temp, int limit = 3){
+  int seconds = temp % 60;
+  temp = temp / 60;
+  int minutes = temp % 60;
+  int hours = temp / 60;
+
+  String s = "";
+  if(limit > 0)
+    s += (extraZero(hours) + hours);
+  if(limit > 1)
+    s += (":" + extraZero(minutes) + minutes);
+  if(limit > 2)
+    s += (":" + extraZero(seconds) + seconds);
+
+  return s;  
 }
 
 bool getPrimarySensor(){ 
@@ -207,10 +250,11 @@ bool pumpOn(bool fromOff = false){
   }
   digitalWrite(pumpControl, state);
   digitalWrite(pumpRunningLED, !fromOff);
-  updatePumpRunning(!fromOff);
   return state != currentState;
 }
 bool pumpOff(){
+  pumpRunCountStart = -1;
+  pumpRunCountEnd = -1;
   return pumpOn(true);
 }
 
@@ -232,8 +276,15 @@ void setup() {
     blankText += " ";
   }
 
+  // Load EEPROM and set values
+  setPumpDrained();
+  setPumpReady();
+  setPumpRunning();
+  setPumpRunTime();
+
   if (pumpRunning){
     pumpOn();
+    pumpRunCountStart = -pumpRunTime;
   }
   else{
     pumpOff();
@@ -245,7 +296,8 @@ void loop() {
     if(pumpReady){
       if(getPrimarySensor()){
         pumpOn();
-        updatePumpReady(false);
+        pumpRunCountStart = getSecondsPassed();
+        updatePumpRunTime(getSecondsPassed() - pumpRunCountStart);
         lcdPrint(statusCodes[2], "tl");
         
         countStart = getSecondsPassed();
@@ -261,21 +313,26 @@ void loop() {
             return;
           }
         }
+        updatePumpRunning(true);
+        updatePumpReady(false);
+        updatePumpRunTime(getSecondsPassed() - pumpRunCountStart);
         // LOOP exit means pump running proper
       }
       else{
+        // Ideal state
         lcdPrint(statusCodes[4], "tm");        
         // Display time of last run
-        lcdPrint(statusCodes[6], "bm");        
+        lcdPrint(statusCodes[8] + getFormattedTime(pumpRunTime), "bm");        
       }
     }
     else{
       //Either pump is running or water is draining
-      if(getSecondarySensor()){  // Failure Issue
+      updatePumpRunTime(getSecondsPassed() - pumpRunCountStart);
+      if(getSecondarySensor()){  // 
         // Pump is running
         lcdPrint(statusCodes[5], "tm");    
         // Display Current Time
-        lcdPrint(statusCodes[6], "bm");     
+        lcdPrint(statusCodes[6] + getFormattedTime(pumpRunTime), "bm");     
       }
       else{
         // Wait some time to drain water and then turn pump off
@@ -287,6 +344,8 @@ void loop() {
           // Condition check for bubbles
           if(offCountEnd - offCountStart > offInterval){
             pumpOff();
+            updatePumpRunTime(getSecondsPassed() - pumpRunCountStart, true);
+            lcdPrint(statusCodes[8] + getFormattedTime(pumpRunTime), "bm"); 
             // Contition check to drain off water
             lcdPrint(statusCodes[7], "tm");
             delay(drainOffTime);
@@ -296,12 +355,12 @@ void loop() {
           }
         }
       }
-
     }
   }
   else{
     pumpOff();
     lcdClearPrint(statusCodes[0], "tm");
+    updatePumpRunning(false);
     updatePumpReady(true);
     while (true) {
       digitalWrite(drainLED, 1);
