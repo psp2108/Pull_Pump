@@ -79,19 +79,18 @@ bool needsReboot = false;
 String statusCodes[] = {
 /* -- *///"OOOOOOOOOOOOOOOO"
 /* 00 */  "Priming fault",
-/* 01 */  "Reseting in ",     // Not used
-/* 02 */  "Water Detected",
-/* 03 */  "Dry Running ",
-/* 04 */  "Pump Ready",
-/* 05 */  "Pump Running",
-/* 06 */  "RunTime ",         //"RunTime 00:00:00"
-/* 07 */  "Drain Mode ",
-/* 08 */  "LastRun ",         //"LastRun 00:00:00"
-/* 09 */  "No Water ",
-/* 10 */  "Main Tank Full",
-/* 11 */  "Erasing Memory",
-/* 12 */  "Memory Erased",
-/* 13 */  "Reboot Device",
+/* 01 */  "Water Detected",
+/* 02 */  "Dry Running ",     //Dry Running 000
+/* 03 */  "Pump Ready",
+/* 04 */  "Pump Running",
+/* 05 */  "RunTime ",         //"RunTime 00:00:00"
+/* 06 */  "Drain Mode ",      //"Drain Mode 00000"
+/* 07 */  "LastRun ",         //"LastRun 00:00:00"
+/* 08 */  "No Water ",        //"No Water 000"
+/* 09 */  "Main Tank Full",
+/* 10 */  "Erasing Memory",
+/* 11 */  "Memory Erased",
+/* 12 */  "Reboot Device"
 /* -- *///"OOOOOOOOOOOOOOOO"
 };
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
@@ -321,7 +320,7 @@ void setup(){
 
   if(digitalRead(_catch)){
     // Erase to Default
-    lcdPrint(statusCodes[11], "tm");
+    lcdPrint(statusCodes[10], "tm");
     updatePumpReady(pumpReady); 
     updatePumpRunning(pumpRunning);
     updateDrainCounter(drainCounter);
@@ -354,7 +353,7 @@ void loop(){
           pumpOn();
           pumpRunCountStart = getSecondsPassed();
           updatePumpRunTime(0);
-          lcdPrint(statusCodes[2], "tm");
+          lcdPrint(statusCodes[1], "tm");
           
           countStart = getSecondsPassed();
 
@@ -362,7 +361,7 @@ void loop(){
           while(!getSecondarySensor() && drainCounter == 0){
             countEnd = getSecondsPassed();
             int timeLeft = drainOffTime - countEnd + countStart;
-            lcdPrint(statusCodes[3] + timeLeft, "bm");
+            lcdPrint(statusCodes[2] + timeLeft, "bm");
             if (timeLeft < 0){
               // Pump Drained
               updatePumpDrained(true);
@@ -377,19 +376,19 @@ void loop(){
         else{
           // Ideal state
           if (getMainTankSensor()){
-            lcdPrint(statusCodes[10], "tm");
+            lcdPrint(statusCodes[9], "tm");
           }
           else{
-            lcdPrint(statusCodes[4], "tm");
+            lcdPrint(statusCodes[3], "tm");
           }
           // Display time of last run
-          lcdPrint(statusCodes[8] + getFormattedTime(pumpRunTime), "bm");
+          lcdPrint(statusCodes[7] + getFormattedTime(pumpRunTime), "bm");
         }
       }
       else{
         //Either pump is running or water is draining
         updatePumpRunTime(getSecondsPassed() - pumpRunCountStart);
-        lcdPrint(statusCodes[6] + getFormattedTime(pumpRunTime), "bm");
+        lcdPrint(statusCodes[5] + getFormattedTime(pumpRunTime), "bm");
         
         if(getMainTankSensor()){
           // Main Tank is full
@@ -397,13 +396,13 @@ void loop(){
           updatePumpRunning(false);
           Serial.println("Pump Off");
           updatePumpRunTime(getSecondsPassed() - pumpRunCountStart, true);
-          lcdPrint(statusCodes[8] + getFormattedTime(pumpRunTime), "bm");
+          lcdPrint(statusCodes[7] + getFormattedTime(pumpRunTime), "bm");
           Serial.println("LCD Updated");
-          lcdPrint(statusCodes[7], "tm");
+          lcdPrint(statusCodes[6], "tm");
 
           updateDrainCounter(0);
           while(getPrimarySensor(true) && drainCounter < mainTankEmptyDelay){
-            lcdPrint(statusCodes[7] + drainCounter++, "tm");
+            lcdPrint(statusCodes[6] + drainCounter++, "tm");
             updateDrainCounter(drainCounter);
             delay(1000);
           }
@@ -416,7 +415,7 @@ void loop(){
         else if(getSecondarySensor()){
           offCountStart = -1;
           // Pump is running
-          lcdPrint(statusCodes[5], "tm");
+          lcdPrint(statusCodes[4], "tm");
         }
         else{
           // Wait some time to drain water and then turn pump off
@@ -426,7 +425,7 @@ void loop(){
           else{
             offCountEnd = getSecondsPassed();
             int timeLeft = offInterval - offCountEnd + offCountStart;
-            lcdPrint(statusCodes[9] + timeLeft, "tm");
+            lcdPrint(statusCodes[8] + timeLeft, "tm");
             // Condition check for bubbles
             Serial.println(offCountEnd - offCountStart);
             if(timeLeft < 0){
@@ -434,16 +433,16 @@ void loop(){
               updatePumpRunning(false);
               Serial.println("Pump Off");
               updatePumpRunTime(getSecondsPassed() - pumpRunCountStart, true);
-              lcdPrint(statusCodes[8] + getFormattedTime(pumpRunTime), "bm");
+              lcdPrint(statusCodes[7] + getFormattedTime(pumpRunTime), "bm");
               Serial.println("LCD Updated");
               // Contition check to empty water
-              lcdPrint(statusCodes[7], "tm");
+              lcdPrint(statusCodes[6], "tm");
 
               // Should not be like this
               // Serial.print("Will wait for waterEmpty, delay ");
               updateDrainCounter(0);
               while(getPrimarySensor(true)){
-                lcdPrint(statusCodes[7] + drainCounter++, "tm");
+                lcdPrint(statusCodes[6] + drainCounter++, "tm");
                 updateDrainCounter(drainCounter);
                 delay(1000);
               }
@@ -472,7 +471,7 @@ void loop(){
 
   }
   else{
-    lcdPrint(statusCodes[12], "tm");
-    lcdPrint(statusCodes[13], "bm");
+    lcdPrint(statusCodes[11], "tm");
+    lcdPrint(statusCodes[12], "bm");
   }
 }
