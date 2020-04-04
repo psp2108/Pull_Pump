@@ -46,18 +46,18 @@ long offCountEnd = -1;
 const int offInterval = 10;
 
 bool pumpReady = true;      // Get from EEPROM
-bool pumpDrained = false;    // Get from EEPROM <Update dont get>
+bool pumpDrained = false;   // Get from EEPROM <Update dont get>
 bool pumpRunning = false;   // Get from EEPROM
 long pumpRunTime = 0;       // Get from EEPROM
 int drainCounter = 0;       // Get from EEPROM
 long pumpRunCountStart = -1;
-const int writeLimitInterval = 15 * 60;   // EEPROM has write cycle limit so write is done in every 15 minutes
+const int writeLimitInterval = 15 * 60;// EEPROM has write cycle limit so write is done in every 15 minutes
 
 long countStart = -1;
 long countEnd = -1;
 const int waterEmptyTime = 10;
 const int mainTankEmptyDelay = 15;
-const int drainOffTime = 10;    // To check if pump need manual assistant
+const int drainOffTime = 10;// To check if pump need manual assistant
 
 String blankText = "";
 
@@ -67,17 +67,17 @@ bool bottomFill = false;
 // Status
 String statusCodes[] = {
 /* -- *///"OOOOOOOOOOOOOOOO"
-/* 00 */  "Priming fault",  
+/* 00 */  "Priming fault",
 /* 01 */  "Reseting in ",   // Not used
-/* 02 */  "Water Detected", 
-/* 03 */  "Dry Running ",  	
+/* 02 */  "Water Detected",
+/* 03 */  "Dry Running ",
 /* 04 */  "Pump Ready",  
 /* 05 */  "Pump Running",  
-/* 06 */  "RunTime ",  //"RunTime 00:00:00" 
-/* 07 */  "Drain Mode ",  
-/* 08 */  "LastRun ",   //"LastRun 00:00:00" 
-/* 09 */  "No Water ",  		//Reverse
-/* 10 */  "Main Tank Full" 
+/* 06 */  "RunTime ",  //"RunTime 00:00:00"
+/* 07 */  "Drain Mode ",
+/* 08 */  "LastRun ",   //"LastRun 00:00:00"
+/* 09 */  "No Water ",
+/* 10 */  "Main Tank Full"
 /* -- *///"OOOOOOOOOOOOOOOO"
 };
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
@@ -160,10 +160,10 @@ String getFormattedTime(long temp, int limit = 3){
   if(limit > 2)
     s += (":" + extraZero(seconds) + seconds);
 
-  return s;  
+  return s;
 }
 
-bool getPrimarySensor(bool force = false){ 
+bool getPrimarySensor(bool force = false){
   // Put not (!) if it is active low
   if(force){
     return digitalRead(primarySensor);
@@ -291,13 +291,13 @@ void setup() {
   // Initialize all pins
   pinMode(primarySensor, INPUT);
   pinMode(secondarySensor, INPUT);
-  pinMode(mainTankSensor, INPUT); 
-  pinMode(pumpControl, OUTPUT); 
-  pinMode(powerLED, OUTPUT); 
-  pinMode(pumpRunningLED, OUTPUT); 
-  pinMode(drainLED, OUTPUT); 
+  pinMode(mainTankSensor, INPUT);
+  pinMode(pumpControl, OUTPUT);
+  pinMode(powerLED, OUTPUT);
+  pinMode(pumpRunningLED, OUTPUT);
+  pinMode(drainLED, OUTPUT);
 
-  for(int i=0; i<16;i ++){
+  for(int i=0; i<16; i ++){
     blankText += " ";
   }
 
@@ -347,26 +347,26 @@ void loop() {
       else{
         // Ideal state
         if (getMainTankSensor()){
-          lcdPrint(statusCodes[10], "tm");  
+          lcdPrint(statusCodes[10], "tm");
         }
         else{
-          lcdPrint(statusCodes[4], "tm");      
-        }  
+          lcdPrint(statusCodes[4], "tm");
+        }
         // Display time of last run
-        lcdPrint(statusCodes[8] + getFormattedTime(pumpRunTime), "bm");        
+        lcdPrint(statusCodes[8] + getFormattedTime(pumpRunTime), "bm");
       }
     }
     else{
       //Either pump is running or water is draining
       updatePumpRunTime(getSecondsPassed() - pumpRunCountStart);
-      lcdPrint(statusCodes[6] + getFormattedTime(pumpRunTime), "bm");   
+      lcdPrint(statusCodes[6] + getFormattedTime(pumpRunTime), "bm");
       
       if(getMainTankSensor()){
         // Main Tank is full
         pumpOff();
         Serial.println("Pump Off");
         updatePumpRunTime(getSecondsPassed() - pumpRunCountStart, true);
-        lcdPrint(statusCodes[8] + getFormattedTime(pumpRunTime), "bm"); 
+        lcdPrint(statusCodes[8] + getFormattedTime(pumpRunTime), "bm");
         Serial.println("LCD Updated");
         lcdPrint(statusCodes[7], "tm");
 
@@ -382,10 +382,10 @@ void loop() {
         }
         updatePumpReady(true);
       }
-      else if(getSecondarySensor()){ 
+      else if(getSecondarySensor()){
         offCountStart = -1;
         // Pump is running
-        lcdPrint(statusCodes[5], "tm");      
+        lcdPrint(statusCodes[5], "tm");
       }
       else{
         // Wait some time to drain water and then turn pump off
@@ -393,16 +393,16 @@ void loop() {
           offCountStart = getSecondsPassed();
         }
         else{
-          offCountEnd = getSecondsPassed();          
+          offCountEnd = getSecondsPassed();
           int timeLeft = offInterval - offCountEnd + offCountStart;
-          lcdPrint(statusCodes[9] + timeLeft, "tm");   
+          lcdPrint(statusCodes[9] + timeLeft, "tm");
           // Condition check for bubbles
           Serial.println(offCountEnd - offCountStart);
           if(timeLeft < 0){
             pumpOff();
             Serial.println("Pump Off");
             updatePumpRunTime(getSecondsPassed() - pumpRunCountStart, true);
-            lcdPrint(statusCodes[8] + getFormattedTime(pumpRunTime), "bm"); 
+            lcdPrint(statusCodes[8] + getFormattedTime(pumpRunTime), "bm");
             Serial.println("LCD Updated");
             // Contition check to empty water
             lcdPrint(statusCodes[7], "tm");
