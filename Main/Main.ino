@@ -100,7 +100,9 @@ void updatePumpRunning(bool state){
 
 void updatePumpRunTime(long runTime, bool force = false){
   pumpRunTime = runTime;
-
+  if(force){
+    pumpRunCountStart = -1;
+  }
   if (pumpRunTime % writeLimitInterval == 0 || force){
     // Store in to EEPROM (condition check)
 
@@ -279,7 +281,6 @@ bool pumpOn(bool fromOff = false){
   return state != currentState;
 }
 bool pumpOff(){
-  pumpRunCountStart = -1;
   return pumpOn(true);
 }
 
@@ -322,7 +323,7 @@ void loop() {
       if(getPrimarySensor()){
         pumpOn();
         pumpRunCountStart = getSecondsPassed();
-        updatePumpRunTime(getSecondsPassed() - pumpRunCountStart);
+        updatePumpRunTime(0);
         lcdPrint(statusCodes[2], "tm");
         
         countStart = getSecondsPassed();
@@ -358,7 +359,6 @@ void loop() {
     else{
       //Either pump is running or water is draining
       updatePumpRunTime(getSecondsPassed() - pumpRunCountStart);
-      // Display Current Time
       lcdPrint(statusCodes[6] + getFormattedTime(pumpRunTime), "bm");   
       
       if(getMainTankSensor()){
