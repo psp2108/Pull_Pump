@@ -70,11 +70,11 @@ String statusCodes[] = {
 /* 00 */  "Priming fault",  
 /* 01 */  "Reseting in ",   // Not used
 /* 02 */  "Water Detected", 
-/* 03 */  "Dry Running ",  	//Reverse
+/* 03 */  "Dry Running ",  	
 /* 04 */  "Pump Ready",  
 /* 05 */  "Pump Running",  
 /* 06 */  "RunTime ",  //"RunTime 00:00:00" 
-/* 07 */  "Drain Mode ",
+/* 07 */  "Drain Mode ",  
 /* 08 */  "LastRun ",   //"LastRun 00:00:00" 
 /* 09 */  "No Water ",  		//Reverse
 /* 10 */  "Main Tank Full" 
@@ -393,11 +393,12 @@ void loop() {
           offCountStart = getSecondsPassed();
         }
         else{
-          offCountEnd = getSecondsPassed();
-          lcdPrint(statusCodes[9] + (offCountEnd - offCountStart), "tm");   
+          offCountEnd = getSecondsPassed();          
+          int timeLeft = offInterval - offCountEnd + offCountStart;
+          lcdPrint(statusCodes[9] + timeLeft, "tm");   
           // Condition check for bubbles
           Serial.println(offCountEnd - offCountStart);
-          if(offCountEnd - offCountStart > offInterval){
+          if(timeLeft < 0){
             pumpOff();
             Serial.println("Pump Off");
             updatePumpRunTime(getSecondsPassed() - pumpRunCountStart, true);
