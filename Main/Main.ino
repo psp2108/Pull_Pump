@@ -187,9 +187,9 @@ String getFormattedTime(unsigned long temp, int limit = 3){
 bool getPrimarySensor(bool force = false){
   // Put not (!) if it is active low
   if(force){
-    return digitalRead(primarySensor);
+    return !digitalRead(primarySensor);
   }
-  if(!digitalRead(primarySensor)){
+  if(digitalRead(primarySensor)){
     return false;
   }
   else{
@@ -198,18 +198,11 @@ bool getPrimarySensor(bool force = false){
 }
 
 bool getSecondarySensor(){
-  return digitalRead(secondarySensor);
-  // if(!digitalRead(secondarySensor)){
-  //   return false;
-  // }
-  // else{
-  //   return !getMainTankSensor();
-  // }
-
+  return !digitalRead(secondarySensor);
 }
 
 bool getMainTankSensor(){
-  return digitalRead(mainTankSensor);
+  return !digitalRead(mainTankSensor);
 }
 
 unsigned long getSecondsPassed(){
