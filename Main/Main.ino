@@ -49,6 +49,7 @@ bool pumpReady = true;      // Get from EEPROM
 bool pumpDrained = false;    // Get from EEPROM <Update dont get>
 bool pumpRunning = false;   // Get from EEPROM
 long pumpRunTime = 0;       // Get from EEPROM
+int drainCounter = 0;       // Get from EEPROM
 long pumpRunCountStart = -1;
 const int writeLimitInterval = 15 * 60;   // EEPROM has write cycle limit so write is done in every 15 minutes
 
@@ -62,7 +63,6 @@ String blankText = "";
 
 String currentTextOnLCD = "";
 bool bottomFill = false;
-int drainCounter = 0;
 
 // Status
 String statusCodes[] = {
@@ -107,6 +107,15 @@ void updatePumpRunTime(long runTime, bool force = false){
   }
 }
 
+void updateDrainCounter(int counter){
+  drainCounter = counter;
+
+  if (drainCounter <= 2){
+    // Store in to EEPROM (condition check)
+
+  }
+}
+
 void setPumpDrained(){
   // Load from EEPROM
   // 04-04-2020 2:30 AM UPDATE -> Dont load from EEPROM
@@ -121,7 +130,11 @@ void setPumpRunning(){
 }
 
 void setPumpRunTime(){
-  // Store in to EEPROM (condition check)
+  // Load EEPROM 
+}
+
+void setDrainCounter(){
+  // Load EEPROM 
 }
 
 String extraZero(byte num){
@@ -205,20 +218,16 @@ void lcdPrint(String text, String pos="tl"){
         case 'l':
           temp = text;
           lcd.print(temp);
-//          Serial.println("Inside Top Left");
           break;
         case 'm':
           temp = getN((len % 2 == 0? 8 - (len/2): 7 - (len/2))) + text;
           lcd.print(temp);
-//          Serial.println("Inside Top Middle");
           break;
         case 'r':
           temp = getN(16-len) + text;
           lcd.print(temp);
-//          Serial.println("Inside Top Right");
           break;
         default:
-//          Serial.println("Default");
           break;
       }
       break;
@@ -229,25 +238,20 @@ void lcdPrint(String text, String pos="tl"){
         case 'l':
           temp = text;
           lcd.print(temp);
-//          Serial.println("Inside Bottom Left");
           break;
         case 'm':
           temp = getN((len % 2 == 0? 8 - (len/2): 7 - (len/2))) + text;
           lcd.print(temp);
-//          Serial.println("Inside Bottom Middle");
           break;
         case 'r':
           temp = getN(16-len) + text;
           lcd.print(temp);
-//          Serial.println("Inside Bottom Right");
           break;
         default:
-//          Serial.println("Default");
           break;
       }
       break;
     default:
-//      Serial.println("Default");
       break;
   }
 }
@@ -301,6 +305,7 @@ void setup() {
   setPumpReady();
   setPumpRunning();
   setPumpRunTime();
+  setDrainCounter();
 
   if (pumpRunning){
     pumpOn();
@@ -323,7 +328,7 @@ void loop() {
         countStart = getSecondsPassed();
 
         // Checking pump drain condition
-        while(!getSecondarySensor()){
+        while(!getSecondarySensor() && drainCounter == 0){
           countEnd = getSecondsPassed();
           int timeLeft = drainOffTime - countEnd + countStart;
           lcdPrint(statusCodes[3] + timeLeft, "bm");
@@ -365,15 +370,17 @@ void loop() {
         Serial.println("LCD Updated");
         lcdPrint(statusCodes[7], "tm");
 
-        int counter = 0;
-        while(getPrimarySensor(true) && counter < mainTankEmptyDelay){
-          lcdPrint(statusCodes[7] + counter++, "tm");
+        updateDrainCounter(0);
+        while(getPrimarySensor(true) && drainCounter < mainTankEmptyDelay){
+          lcdPrint(statusCodes[7] + drainCounter++, "tm");
+          updateDrainCounter(drainCounter);
           delay(1000);
         }
-        Serial.println("Water Drained");
+        if(!getPrimarySensor(true)){
+          updateDrainCounter(0);
+          Serial.println("Water Drained");
+        }
         updatePumpReady(true);
-        offCountStart = -1;
-        offCountEnd = -1;
       }
       else if(getSecondarySensor()){ 
         offCountStart = -1;
@@ -401,11 +408,13 @@ void loop() {
 
             // Should not be like this
             // Serial.print("Will wait for waterEmpty, delay ");
-            int counter = 0;
+            updateDrainCounter(0);
             while(getPrimarySensor(true)){
-              lcdPrint(statusCodes[7] + counter++, "tm");
+              lcdPrint(statusCodes[7] + drainCounter++, "tm");
+              updateDrainCounter(drainCounter);
               delay(1000);
             }
+            updateDrainCounter(0);
             Serial.println("Water Drained");
             updatePumpReady(true);
             offCountStart = -1;
@@ -422,7 +431,7 @@ void loop() {
     updatePumpReady(true);
     while (true) {
       digitalWrite(drainLED, 1);
-      delay(1000);
+      delay(500);
       digitalWrite(drainLED, 0);
       delay(500);
     }
