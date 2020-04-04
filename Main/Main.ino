@@ -46,10 +46,10 @@ long offCountEnd = -1;
 const int offInterval = 10;
 
 bool pumpReady = true;      // Get from EEPROM
-bool pumpDrained = false;   // Get from EEPROM <Update dont get>
 bool pumpRunning = false;   // Get from EEPROM
 long pumpRunTime = 0;       // Get from EEPROM
 int drainCounter = 0;       // Get from EEPROM
+bool pumpDrained = false;
 long pumpRunCountStart = -1;
 const int writeLimitInterval = 15 * 60;// EEPROM has write cycle limit so write is done in every 15 minutes
 
@@ -83,10 +83,10 @@ String statusCodes[] = {
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
 void updatePumpDrained(bool state){
-  // Store in to EEPROM
   // 04-04-2020 2:30 AM UPDATE -> Dont store it on EEPROM
   pumpDrained = state;
 }
+
 
 void updatePumpReady(bool state){
   // Store in to EEPROM
@@ -116,11 +116,6 @@ void updateDrainCounter(int counter){
     // Store in to EEPROM (condition check)
 
   }
-}
-
-void setPumpDrained(){
-  // Load from EEPROM
-  // 04-04-2020 2:30 AM UPDATE -> Dont load from EEPROM
 }
 
 void setPumpReady(){
@@ -302,7 +297,6 @@ void setup(){
   }
 
   // Load EEPROM and set values
-  setPumpDrained();
   setPumpReady();
   setPumpRunning();
   setPumpRunTime();
