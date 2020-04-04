@@ -55,12 +55,14 @@ const int writeLimitInterval = 15 * 60;   // EEPROM has write cycle limit so wri
 long countStart = -1;
 long countEnd = -1;
 const int waterEmptyTime = 10;
+const int mainTankEmptyDelay = 15;
 const int drainOffTime = 10;    // To check if pump need manual assistant
 
 String blankText = "";
 
 String currentTextOnLCD = "";
 bool bottomFill = false;
+int drainCounter = 0;
 
 // Status
 String statusCodes[] = {
@@ -146,8 +148,11 @@ String getFormattedTime(long temp, int limit = 3){
   return s;  
 }
 
-bool getPrimarySensor(){ 
+bool getPrimarySensor(bool force = false){ 
   // Put not (!) if it is active low
+  if(force){
+    return digitalRead(primarySensor);
+  }
   if(!digitalRead(primarySensor)){
     return false;
   }
@@ -351,7 +356,26 @@ void loop() {
       // Display Current Time
       lcdPrint(statusCodes[6] + getFormattedTime(pumpRunTime), "bm");   
       
-      if(getSecondarySensor()){ 
+      if(getMainTankSensor()){
+        // Main Tank is full
+        pumpOff();
+        Serial.println("Pump Off");
+        updatePumpRunTime(getSecondsPassed() - pumpRunCountStart, true);
+        lcdPrint(statusCodes[8] + getFormattedTime(pumpRunTime), "bm"); 
+        Serial.println("LCD Updated");
+        lcdPrint(statusCodes[7], "tm");
+
+        int counter = 0;
+        while(getPrimarySensor(true) && counter < mainTankEmptyDelay){
+          lcdPrint(statusCodes[7] + counter++, "tm");
+          delay(1000);
+        }
+        Serial.println("Water Drained");
+        updatePumpReady(true);
+        offCountStart = -1;
+        offCountEnd = -1;
+      }
+      else if(getSecondarySensor()){ 
         offCountStart = -1;
         // Pump is running
         lcdPrint(statusCodes[5], "tm");      
@@ -378,7 +402,7 @@ void loop() {
             // Should not be like this
             // Serial.print("Will wait for waterEmpty, delay ");
             int counter = 0;
-            while(getPrimarySensor()){
+            while(getPrimarySensor(true)){
               lcdPrint(statusCodes[7] + counter++, "tm");
               delay(1000);
             }
