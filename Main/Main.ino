@@ -68,14 +68,14 @@ bool bottomFill = false;
 String statusCodes[] = {
 /* -- *///"OOOOOOOOOOOOOOOO"
 /* 00 */  "Priming fault",
-/* 01 */  "Reseting in ",   // Not used
+/* 01 */  "Reseting in ",     // Not used
 /* 02 */  "Water Detected",
 /* 03 */  "Dry Running ",
-/* 04 */  "Pump Ready",  
-/* 05 */  "Pump Running",  
-/* 06 */  "RunTime ",  //"RunTime 00:00:00"
+/* 04 */  "Pump Ready",
+/* 05 */  "Pump Running",
+/* 06 */  "RunTime ",         //"RunTime 00:00:00"
 /* 07 */  "Drain Mode ",
-/* 08 */  "LastRun ",   //"LastRun 00:00:00"
+/* 08 */  "LastRun ",         //"LastRun 00:00:00"
 /* 09 */  "No Water ",
 /* 10 */  "Main Tank Full"
 /* -- *///"OOOOOOOOOOOOOOOO"
@@ -284,7 +284,7 @@ bool pumpOff(){
   return pumpOn(true);
 }
 
-void setup() {
+void setup(){
   Serial.begin(9600);
   lcd.begin(16, 2);
   
@@ -317,7 +317,7 @@ void setup() {
   }
 }
 
-void loop() {
+void loop(){
   if(!pumpDrained){
     if(pumpReady){
       if(getPrimarySensor()){
@@ -430,7 +430,7 @@ void loop() {
     lcdClearPrint(statusCodes[0], "tm");
     updatePumpRunning(false);
     updatePumpReady(true);
-    while (true) {
+    while (true){
       digitalWrite(drainLED, 1);
       delay(500);
       digitalWrite(drainLED, 0);
