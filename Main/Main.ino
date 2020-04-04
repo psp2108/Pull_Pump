@@ -25,32 +25,32 @@ unsigned long pumpRunTime = 0;       // Get from EEPROM
 
 /////////////////////// PIN SECTION ///////////////////////
 // To ERASE MEMORY
-const int _throw = 5;
-const int _catch = 6;
+const int _throw = 9;
+const int _catch = 10;
 
 // LCD interface pins
-const int rs = 12;
-const int en = 11;
-const int d4 = 10;
-const int d5 = 9;
-const int d6 = 8;
-const int d7 = 7;
+const int rs = 8;
+const int en = 6;
+const int d4 = 5;
+const int d5 = 4;
+const int d6 = 3;
+const int d7 = 2;
 
 // Sensor 1
-const int primarySensor = 14;//A0;
+const int primarySensor = A0;
 
 // Sensor 2
-const int secondarySensor = 15;//A1;
+const int secondarySensor = A1;
 
 // Sensor 3
-const int mainTankSensor = 16;//A2;
+const int mainTankSensor = A2;
 
 // Pump Control
 const int pumpControl = A3;
 
 // indication LEDs
-const int pumpRunningLED = 3;
-const int drainLED = 2;
+const int pumpRunningLED = 12;
+const int drainLED = 13;
 ///////////////////////////////////////////////////////////
 
 // Parameters to check the off time of pump
