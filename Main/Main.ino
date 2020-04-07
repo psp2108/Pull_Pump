@@ -10,7 +10,8 @@
  * 10000 Write Cycles in total so it is recommended to use put() function in 5 or 10 minutes interval
  */
 
-/////////////////////// MEMORY RELATED ///////////////////////
+//////////////////////// MEMORY RELATED ////////////////////////
+
 // Default States
 byte stateByte = 1;
 
@@ -21,9 +22,10 @@ int drainCounter = 0;       // Get from EEPROM (-----x--)
 
 const int addressPumpRunTime = 1;
 unsigned long pumpRunTime = 0;       // Get from EEPROM
-//////////////////////////////////////////////////////////////
 
-/////////////////////// PIN SECTION ///////////////////////
+////////////////////////////////////////////////////////////////
+///////////////////////// PIN  SECTION /////////////////////////
+
 // To ERASE MEMORY
 const int _throw = 9;
 const int _catch = 10;
@@ -49,33 +51,49 @@ const int mainTankSensor = A2;
 const int pumpControl = A3;
 
 // indication LEDs
-const int pumpRunningLED = 12;
-const int drainLED = 13;
-///////////////////////////////////////////////////////////
+const int pumpRunningLED = 13;
+const int primingLED = 12;
+
+////////////////////////////////////////////////////////////////
+///////////////////// INTERVAL  PARAMETERS /////////////////////
+
+// EEPROM has write cycle limit so write is done after some interval
+const int writeLimitInterval = 10;//15* 60;
+
+// Timmer to turn pump off from running state
+const int pumpOffInterval = 10;
+
+// Delay for the pump to be in ready state after turning off from main tank full Sensor
+const int mainTankEmptyDelay = 15;
+
+// Interval to check when the pump needs manual assistance (Priming Fault)
+const int pumpDryRunTime = 10;
+
+////////////////////////////////////////////////////////////////
+////////////////////// COUNTER  VARIABLES //////////////////////
 
 // Parameters to check the off time of pump
 long offCountStart = -1;
 long offCountEnd = -1;
-const int offInterval = 10;
 
-bool pumpDrained = false;
-long pumpRunCountStart = -1;
-const int writeLimitInterval = 10;//15* 60;// EEPROM has write cycle limit so write is done in every 15 minutes
-
+// General purpose ounters
 long countStart = -1;
 long countEnd = -1;
-const int waterEmptyTime = 10;
-const int mainTankEmptyDelay = 15;
-const int drainOffTime = 10;// To check if pump need manual assistant
 
-String blankText = "";
+//Special counter which tracks the run time of pump
+long pumpRunCountStart = -1;
 
-String currentTextOnLCD = "";
+////////////////////////////////////////////////////////////////
+//////////////////// LCD RELATED PARAMETERS ////////////////////
+
+String blankText = "                ";
+
+// To avoid lcd.clear() if bottom line is already blanked 
+// (as lcd.clear() has some delay in it which causes the text to faint out)
 bool bottomFill = false;
-bool needsReboot = false;
+String currentTextOnLCD = "";
 
-
-// Status
+// Status Messages which are displayed on lcd
 String statusCodes[] = {
 /* -- *///"OOOOOOOOOOOOOOOO"
 /* 00 */  "Priming fault",
@@ -93,6 +111,18 @@ String statusCodes[] = {
 /* 12 */  "Reboot Device"
 /* -- *///"OOOOOOOOOOOOOOOO"
 };
+
+////////////////////////////////////////////////////////////////
+///////////////////////// OTHER  FLAGS /////////////////////////
+
+// Primimg Fault
+bool pumpDrained = false;
+
+// After memory reset
+bool needsReboot = false;
+
+////////////////////////////////////////////////////////////////
+
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
 
 void updatePumpDrained(bool state){
@@ -197,10 +227,12 @@ bool getPrimarySensor(bool force = false){
 }
 
 bool getSecondarySensor(){
+  // Put not (!) if it is active low
   return !digitalRead(secondarySensor);
 }
 
 bool getMainTankSensor(){
+  // Put not (!) if it is active low
   return !digitalRead(mainTankSensor);
 }
 
@@ -217,8 +249,9 @@ String getN(int n, String dummy = " "){
 }
 
 /*
- * tl    tm      tr
- * bl    bm      br
+ * LCD directions variable:pos
+ *   [tl    tm      tr]
+ *   [bl    bm      br]
 */
 void lcdPrint(String text, String pos="tl"){
   int len = text.length() <= 16 ? text.length() : 16;
@@ -226,8 +259,7 @@ void lcdPrint(String text, String pos="tl"){
   String temp = "";
   
   switch (pos[0]){
-    case 't':
-      
+    case 't':      
       lcd.setCursor(0, 0);
       switch (pos[1]) {
         case 'l':
@@ -269,6 +301,9 @@ void lcdPrint(String text, String pos="tl"){
     default:
       break;
   }
+  Serial.print(pos);
+  Serial.print(" - ");
+  Serial.println(temp);
 }
 
 void lcdClearPrint(String text, String pos="tl"){
@@ -283,7 +318,7 @@ void lcdClearPrint(String text, String pos="tl"){
 }
 
 bool pumpOn(bool fromOff = false){
-  // True means turning pump on
+  // state=true (Actual state on relay output pin) means turning pump on
   bool state = true;
   bool currentState = digitalRead(pumpControl);
   if(fromOff){
@@ -307,16 +342,12 @@ void setup(){
   pinMode(mainTankSensor, INPUT);
   pinMode(pumpControl, OUTPUT);
   pinMode(pumpRunningLED, OUTPUT);
-  pinMode(drainLED, OUTPUT);
-
+  pinMode(primingLED, OUTPUT);
   pinMode(_throw, OUTPUT);
   pinMode(_catch, INPUT);
+
   digitalWrite(_throw, 0);
   digitalWrite(_catch, 1);
-
-  for(int i=0; i<16; i ++){
-    blankText += " ";
-  }
 
   if(digitalRead(_catch)){
     // Erase to Default
@@ -336,7 +367,11 @@ void setup(){
     setDrainCounter();
 
     if (pumpRunning){
-      pumpOn();
+      if(getMainTankSensor())
+        pumpOff();
+      else
+        pumpOn();
+
       pumpRunCountStart = -pumpRunTime;
     }
     else{
@@ -357,13 +392,13 @@ void loop(){
           
           countStart = getSecondsPassed();
 
-          // Checking pump drain condition
+          // Checking pump priming fault
           while(!getSecondarySensor() && drainCounter == 0){
             countEnd = getSecondsPassed();
-            int timeLeft = drainOffTime - countEnd + countStart;
+            int timeLeft = pumpDryRunTime - countEnd + countStart;
             lcdPrint(statusCodes[2] + timeLeft, "bm");
             if (timeLeft < 0){
-              // Pump Drained
+              // Priming Fault
               updatePumpDrained(true);
               return;
             }
@@ -424,7 +459,7 @@ void loop(){
           }
           else{
             offCountEnd = getSecondsPassed();
-            int timeLeft = offInterval - offCountEnd + offCountStart;
+            int timeLeft = pumpOffInterval - offCountEnd + offCountStart;
             lcdPrint(statusCodes[8] + timeLeft, "tm");
             // Condition check for bubbles
             Serial.println(offCountEnd - offCountStart);
@@ -462,13 +497,12 @@ void loop(){
       updatePumpRunning(false);
       updatePumpReady(true);
       while (true){
-        digitalWrite(drainLED, 1);
+        digitalWrite(primingLED, 1);
         delay(500);
-        digitalWrite(drainLED, 0);
+        digitalWrite(primingLED, 0);
         delay(500);
       }
     }
-
   }
   else{
     lcdPrint(statusCodes[11], "tm");
