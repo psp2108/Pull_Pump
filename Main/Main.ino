@@ -58,16 +58,16 @@ const int primingLED = 12;
 ///////////////////// INTERVAL  PARAMETERS /////////////////////
 
 // EEPROM has write cycle limit so write is done after some interval
-const int writeLimitInterval = 10;//15* 60;
+const int writeLimitInterval = 5*60;
 
 // Timmer to turn pump off from running state
-const int pumpOffInterval = 10;
+const int pumpOffInterval = 5*60;
 
 // Delay for the pump to be in ready state after turning off from main tank full Sensor
-const int mainTankEmptyDelay = 15;
+const int mainTankEmptyDelay = 10*60;
 
 // Interval to check when the pump needs manual assistance (Priming Fault)
-const int pumpDryRunTime = 10;
+const int pumpDryRunTime = 5*60;
 
 ////////////////////////////////////////////////////////////////
 ////////////////////// COUNTER  VARIABLES //////////////////////
