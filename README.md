@@ -1,11 +1,12 @@
 # Automatic Water Pull Pump
-## Version 1.0
+## Version 2.0
 
-- Pump auto turn on when water is detected at its primary end
-- Pump will get into safe run state when it actually start pumping water
-- Detecting Pump priming fault but system will need hard reset after this
-- Auto turn off when when water pumping is stopped
-- Recording pump run time
-- Power failure is being handled 
-- LED indications
-- Memory clean mode
+- Priming mode auto reset
+- LED indication for Pump ready
+- LED indication for drain mode
+- LED blink for 'No Water' status
+- Priming end water is checked on initial pump run
+- Seconds time changed to hh:mm:ss and mm:ss format
+- Some of status code changed
+- Memory Address changed to new unused block
+- Time format bug fixed
