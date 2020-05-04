@@ -6,3 +6,6 @@
 - LED indication for drain mode
 - LED blink for 'No Water' status
 - Priming end water is checked on initial pump run
+- Seconds time changed to hh:mm:ss and mm:ss format
+- Some of status code changed
+- Memory Address changed to new unused block

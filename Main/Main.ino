@@ -100,13 +100,13 @@ String statusCodes[] = {
 /* -- *///"OOOOOOOOOOOOOOOO"
 /* 00 */  "Priming fault",
 /* 01 */  "Water Detected",
-/* 02 */  "Dry Running ",     //Dry Running 000
+/* 02 */  "Dry Run ",     //"Dry Run 00:00"
 /* 03 */  "Pump Ready",
 /* 04 */  "Pump Running",
 /* 05 */  "RunTime ",         //"RunTime 00:00:00"
-/* 06 */  "Drain Mode ",      //"Drain Mode 00000"
+/* 06 */  "Drain ",         //"Drain   00:00:00"
 /* 07 */  "LastRun ",         //"LastRun 00:00:00"
-/* 08 */  "No Water ",        //"No Water 000"
+/* 08 */  "No Water ",        //"No Water   00:00"
 /* 09 */  "Main Tank Full",
 /* 10 */  "Erasing Memory",
 /* 11 */  "Memory Erased",
@@ -207,12 +207,12 @@ String getFormattedTime(unsigned long temp, int limit = 3){
   int hours = temp / 60;
 
   String s = "";
-  if(limit > 0)
-    s += (extraZero(hours) + hours);
-  if(limit > 1)
-    s += (":" + extraZero(minutes) + minutes);
   if(limit > 2)
-    s += (":" + extraZero(seconds) + seconds);
+    s += (extraZero(hours) + hours) + ":";
+  if(limit > 1)
+    s += (extraZero(minutes) + minutes) + ":";
+  if(limit > 0)
+    s += (extraZero(seconds) + seconds);
 
   return s;
 }
@@ -405,7 +405,7 @@ void loop(){
           while(!getSecondarySensor() && drainCounter == 0){
             countEnd = getSecondsPassed();
             int timeLeft = pumpDryRunTime - countEnd + countStart;
-            lcdPrint(statusCodes[2] + timeLeft, "bm");
+            lcdPrint(statusCodes[2] + getFormattedTime(timeLeft, 2), "bm");
             digitalWrite(pumpRunningLED, getSecondsPassed(300) % 2);
             if (timeLeft < 0){
               // Priming Fault
@@ -444,7 +444,7 @@ void loop(){
 
           updateDrainCounter(0);
           while(getPrimarySensor(true) && drainCounter < mainTankEmptyDelay){
-            lcdPrint(statusCodes[6] + drainCounter++, "tm");
+            lcdPrint(statusCodes[6] + getFormattedTime(drainCounter++), "tm");
             updateDrainCounter(drainCounter);
             delay(1000);
             digitalWrite(drainingLED, !digitalRead(drainingLED));
@@ -470,7 +470,7 @@ void loop(){
           else{
             offCountEnd = getSecondsPassed();
             int timeLeft = pumpOffInterval - offCountEnd + offCountStart;
-            lcdPrint(statusCodes[8] + timeLeft, "tm");
+            lcdPrint(statusCodes[8] + getFormattedTime(timeLeft, 2), "tm");
             digitalWrite(pumpRunningLED, getSecondsPassed(300) % 2);
             // Condition check for bubbles
             Serial.println(offCountEnd - offCountStart);
@@ -488,7 +488,7 @@ void loop(){
               // Serial.print("Will wait for waterEmpty, delay ");
               updateDrainCounter(0);
               while(getPrimarySensor(true)){
-                lcdPrint(statusCodes[6] + drainCounter++, "tm");
+                lcdPrint(statusCodes[6] + getFormattedTime(drainCounter++), "tm");
                 updateDrainCounter(drainCounter);
                 delay(1000);
                 digitalWrite(drainingLED, !digitalRead(drainingLED));
@@ -514,7 +514,7 @@ void loop(){
       
       while (getPrimarySensor(true)){
         drainCounter = getSecondsPassed() - offCountStart;
-        lcdPrint(statusCodes[6] + drainCounter, "tm");
+        lcdPrint(statusCodes[6] + getFormattedTime(drainCounter), "tm");
         updateDrainCounter(drainCounter);
         digitalWrite(primingLED, getSecondsPassed(200) % 2);
       }

@@ -1,13 +1,13 @@
 /* -- *///"OOOOOOOOOOOOOOOO"
 /* 00 */  "Priming fault",
 /* 01 */  "Water Detected",
-/* 02 */  "Dry Running ",     //Dry Running 000
+/* 02 */  "Dry Run ",     //"Dry Run 00:00"
 /* 03 */  "Pump Ready",
 /* 04 */  "Pump Running",
 /* 05 */  "RunTime ",         //"RunTime 00:00:00"
-/* 06 */  "Drain Mode ",      //"Drain Mode 00000"
+/* 06 */  "Drain ",         //"Drain   00:00:00"
 /* 07 */  "LastRun ",         //"LastRun 00:00:00"
-/* 08 */  "No Water ",        //"No Water 000"
+/* 08 */  "No Water ",        //"No Water   00:00"
 /* 09 */  "Main Tank Full",
 /* 10 */  "Erasing Memory",
 /* 11 */  "Memory Erased",
