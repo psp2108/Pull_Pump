@@ -15,12 +15,12 @@
 // Default States
 byte stateByte = 1;
 
-const int addressStateByte = 0;   // Address to store pumpReady, pumpRunning, drainCounter
+const int addressStateByte = 5;   // Address to store pumpReady, pumpRunning, drainCounter
 bool pumpReady = true;      // Get from EEPROM (-------x)
 bool pumpRunning = false;   // Get from EEPROM (------x-)
 int drainCounter = 0;       // Get from EEPROM (-----x--)
 
-const int addressPumpRunTime = 1;
+const int addressPumpRunTime = addressStateByte + 1;
 unsigned long pumpRunTime = 0;       // Get from EEPROM
 
 ////////////////////////////////////////////////////////////////
@@ -240,11 +240,8 @@ bool getMainTankSensor(){
   return !digitalRead(mainTankSensor);
 }
 
-unsigned long getSecondsPassed(bool inSeconds = true){
-  if (inSeconds)
-    return(millis() / 1000);
-  else
-    return(millis() / 300);
+unsigned long getSecondsPassed(long inSeconds = 1000){
+  return(millis() / inSeconds);
 }
 
 String getN(int n, String dummy = " "){
@@ -409,7 +406,7 @@ void loop(){
             countEnd = getSecondsPassed();
             int timeLeft = pumpDryRunTime - countEnd + countStart;
             lcdPrint(statusCodes[2] + timeLeft, "bm");
-            digitalWrite(pumpRunningLED, getSecondsPassed(false) % 2);
+            digitalWrite(pumpRunningLED, getSecondsPassed(300) % 2);
             if (timeLeft < 0){
               // Priming Fault
               updatePumpDrained(true);
@@ -474,7 +471,7 @@ void loop(){
             offCountEnd = getSecondsPassed();
             int timeLeft = pumpOffInterval - offCountEnd + offCountStart;
             lcdPrint(statusCodes[8] + timeLeft, "tm");
-            digitalWrite(pumpRunningLED, getSecondsPassed(false) % 2);
+            digitalWrite(pumpRunningLED, getSecondsPassed(300) % 2);
             // Condition check for bubbles
             Serial.println(offCountEnd - offCountStart);
             if(timeLeft < 0){
@@ -513,15 +510,15 @@ void loop(){
       updatePumpRunning(false);
       updatePumpReady(true);
       updateDrainCounter(0);
-
+      offCountStart = getSecondsPassed();
+      
       while (getPrimarySensor(true)){
-        lcdPrint(statusCodes[6] + drainCounter++, "tm");
+        drainCounter = getSecondsPassed() - offCountStart;
+        lcdPrint(statusCodes[6] + drainCounter, "tm");
         updateDrainCounter(drainCounter);
-        digitalWrite(primingLED, 1);
-        delay(300);
-        digitalWrite(primingLED, 0);
-        delay(300);
+        digitalWrite(primingLED, getSecondsPassed(200) % 2);
       }
+      offCountStart = -1;
       digitalWrite(primingLED, 0);
       updatePumpDrained(false);
       updatePumpReady(true);
