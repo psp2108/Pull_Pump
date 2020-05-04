@@ -9,3 +9,4 @@
 - Seconds time changed to hh:mm:ss and mm:ss format
 - Some of status code changed
 - Memory Address changed to new unused block
+- Time format bug fixed
