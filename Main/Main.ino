@@ -174,6 +174,7 @@ void setPumpReady(){
   // Load from EEPROM stateByte(-------x)
   stateByte = EEPROM.read(addressStateByte);
   pumpReady = bitRead(stateByte, 0);
+  digitalWrite(readyLED, pumpReady);
 }
 void setPumpRunning(){
   // Load from EEPROM stateByte(------x-)
@@ -239,8 +240,11 @@ bool getMainTankSensor(){
   return !digitalRead(mainTankSensor);
 }
 
-unsigned long getSecondsPassed(){
-  return(millis() / 1000);
+unsigned long getSecondsPassed(bool inSeconds = true){
+  if (inSeconds)
+    return(millis() / 1000);
+  else
+    return(millis() / 300);
 }
 
 String getN(int n, String dummy = " "){
@@ -391,44 +395,27 @@ void loop(){
       if(pumpReady){
         if(getPrimarySensor()){
           pumpOn();
+          updatePumpReady(false);
+          updatePumpRunning(true);
           pumpRunCountStart = getSecondsPassed();
           updatePumpRunTime(0);
           lcdPrint(statusCodes[1], "tm");
           
           countStart = getSecondsPassed();
+          updatePumpRunTime(getSecondsPassed() - pumpRunCountStart);
 
           // Checking pump priming fault
           while(!getSecondarySensor() && drainCounter == 0){
-            if(getPrimarySensor()){
-              countEnd = getSecondsPassed();
-              int timeLeft = pumpDryRunTime - countEnd + countStart;
-              lcdPrint(statusCodes[2] + timeLeft, "bm");
-              if (timeLeft < 0){
-                // Priming Fault
-                updatePumpDrained(true);
-                return;
-              }
-            }
-            else{
-              pumpOff();
-              updatePumpRunning(false);
-              Serial.println("Pump Off");
-              updatePumpRunTime(getSecondsPassed() - pumpRunCountStart, true);
-              lcdPrint(statusCodes[7] + getFormattedTime(pumpRunTime), "bm");
-              Serial.println("LCD Updated");
-              // Contition check to empty water
-              lcdPrint(statusCodes[6], "tm");
-              updateDrainCounter(0);
-              Serial.println("Water Drained");
-              updatePumpReady(true);
-              offCountStart = -1;
-              offCountEnd = -1;
+            countEnd = getSecondsPassed();
+            int timeLeft = pumpDryRunTime - countEnd + countStart;
+            lcdPrint(statusCodes[2] + timeLeft, "bm");
+            digitalWrite(pumpRunningLED, getSecondsPassed(false) % 2);
+            if (timeLeft < 0){
+              // Priming Fault
+              updatePumpDrained(true);
               return;
             }
           }
-          updatePumpRunning(true);
-          updatePumpReady(false);
-          updatePumpRunTime(getSecondsPassed() - pumpRunCountStart);
           // LOOP exit means pump running proper
         }
         else{
@@ -487,7 +474,7 @@ void loop(){
             offCountEnd = getSecondsPassed();
             int timeLeft = pumpOffInterval - offCountEnd + offCountStart;
             lcdPrint(statusCodes[8] + timeLeft, "tm");
-            digitalWrite(pumpRunningLED, timeLeft % 2);
+            digitalWrite(pumpRunningLED, getSecondsPassed(false) % 2);
             // Condition check for bubbles
             Serial.println(offCountEnd - offCountStart);
             if(timeLeft < 0){
@@ -536,6 +523,8 @@ void loop(){
         delay(300);
       }
       digitalWrite(primingLED, 0);
+      updatePumpDrained(false);
+      updatePumpReady(true);
     }
   }
   else{
