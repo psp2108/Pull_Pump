@@ -66,7 +66,7 @@ const int drainingLED = 12;
 const int writeLimitInterval = 5*60;
 
 // Timmer to turn pump off from running state
-const int pumpOffInterval = 5*60;
+const int pumpOffInterval = 2*60;
 
 // Delay for the pump to be in ready state after turning off from main tank full Sensor
 const int mainTankEmptyDelay = 10*60;
@@ -125,6 +125,9 @@ bool pumpDrained = false;
 
 // After memory reset
 bool needsReboot = false;
+
+// False main tank signal
+bool forceEmpty = false;
 
 ////////////////////////////////////////////////////////////////
 
@@ -240,6 +243,8 @@ bool getSecondarySensor(){
 
 bool getMainTankSensor(){
   // Put not (!) if it is active low
+  if (forceEmpty)
+    return false;
   return !digitalRead(mainTankSensor);
 }
 
@@ -308,9 +313,9 @@ void lcdPrint(String text, String pos="tl"){
     default:
       break;
   }
-  Serial.print(pos);
-  Serial.print(" - ");
-  Serial.println(temp);
+  // Serial.print(pos);
+  // Serial.print(" - ");
+  // Serial.println(temp);
 }
 
 void lcdClearPrint(String text, String pos="tl"){
@@ -330,6 +335,7 @@ bool pumpOn(bool fromOff = false){
   bool currentState = digitalRead(pumpControl);
   if(fromOff){
     state = !state;
+    forceEmpty = false;
   }
   else{
     digitalWrite(readyLED, fromOff);
@@ -343,7 +349,8 @@ bool pumpOff(){
 }
 
 bool forcePumpOnWithCheck(){
-  if((!pumpRunning) && (!digitalRead(forcePumpOn))){
+  if((!pumpRunning) && digitalRead(forcePumpOn)){
+    Serial.println("Turning Pump on forcefully");
     pumpOn();
     offCountStart = -1;
     offCountEnd = -1;
@@ -355,6 +362,8 @@ bool forcePumpOnWithCheck(){
     updatePumpReady(false);
     updatePumpRunTime(0, true);
     updatePumpDrained(false);
+
+    forceEmpty = true;
 
     return true;
   }
@@ -502,7 +511,6 @@ void loop(){
             offCountEnd = getSecondsPassed();
             int timeLeft = pumpOffInterval - offCountEnd + offCountStart;
             lcdPrint(statusCodes[8] + getFormattedTime(timeLeft, 2), "tm");
-            digitalWrite(pumpRunningLED, getSecondsPassed(300) % 2);
             // Condition check for bubbles
             Serial.println(offCountEnd - offCountStart);
             if(timeLeft < 0){
@@ -534,6 +542,7 @@ void loop(){
             }
             else{
               pumpOn();
+              digitalWrite(pumpRunningLED, getSecondsPassed(300) % 2);
               updatePumpRunning(true);
             }
           }
