@@ -1,11 +1,7 @@
 # Automatic Water Pull Pump
-## Version 2.0
+## Version 2.1
 
-- Priming mode auto reset
-- LED indication for Pump ready
-- LED indication for drain mode
-- LED blink for 'No Water' status
-- Seconds time changed to hh:mm:ss and mm:ss format
-- Some of status code changed
-- Memory Address changed to new unused block
-- Time format bug fixed
+- FIXED pump not turning on after power failure
+- Reduced Priming delay to 30 sec
+- Last run time does not reset after priming fault
+- Added force pump on functionality

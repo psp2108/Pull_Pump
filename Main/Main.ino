@@ -50,6 +50,9 @@ const int mainTankSensor = A2;
 // Pump Control
 const int pumpControl = A3;
 
+// Force Pump On (Active Low)
+const int forcePumpOn = 10;
+
 // indication LEDs
 const int pumpRunningLED = 13;
 const int primingLED = 12;
@@ -69,7 +72,7 @@ const int pumpOffInterval = 5*60;
 const int mainTankEmptyDelay = 10*60;
 
 // Interval to check when the pump needs manual assistance (Priming Fault)
-const int pumpDryRunTime = 5*60;
+const int pumpDryRunTime = 30;
 
 ////////////////////////////////////////////////////////////////
 ////////////////////// COUNTER  VARIABLES //////////////////////
@@ -328,12 +331,34 @@ bool pumpOn(bool fromOff = false){
   if(fromOff){
     state = !state;
   }
+  else{
+    digitalWrite(readyLED, fromOff);
+  }
   digitalWrite(pumpControl, state);
   digitalWrite(pumpRunningLED, !fromOff);
   return state != currentState;
 }
 bool pumpOff(){
   return pumpOn(true);
+}
+
+bool forcePumpOnWithCheck(){
+  if((!pumpRunning) && (!digitalRead(forcePumpOn))){
+    pumpOn();
+    offCountStart = -1;
+    offCountEnd = -1;
+    countStart = -1;
+    countEnd = -1;
+
+    updateDrainCounter(0);
+    updatePumpRunning(true);
+    updatePumpReady(false);
+    updatePumpRunTime(0, true);
+    updatePumpDrained(false);
+
+    return true;
+  }
+  return false;
 }
 
 void setup(){
@@ -351,9 +376,12 @@ void setup(){
   pinMode(drainingLED, OUTPUT);
   pinMode(_throw, OUTPUT);
   pinMode(_catch, INPUT);
+  pinMode(forcePumpOn, INPUT);
+  
 
   digitalWrite(_throw, 0);
   digitalWrite(_catch, 1);
+  digitalWrite(forcePumpOn, 1);
 
   if(digitalRead(_catch)){
     // Erase to Default
@@ -388,21 +416,21 @@ void setup(){
 
 void loop(){
   if(!needsReboot){
+    if (forcePumpOnWithCheck()) return;
     if(!pumpDrained){
       if(pumpReady){
         if(getPrimarySensor()){
           pumpOn();
-          updatePumpReady(false);
           updatePumpRunning(true);
           pumpRunCountStart = getSecondsPassed();
-          updatePumpRunTime(0);
+          // updatePumpRunTime(0);
           lcdPrint(statusCodes[1], "tm");
           
           countStart = getSecondsPassed();
-          updatePumpRunTime(getSecondsPassed() - pumpRunCountStart);
 
           // Checking pump priming fault
           while(!getSecondarySensor() && drainCounter == 0){
+            if (forcePumpOnWithCheck()) return;
             countEnd = getSecondsPassed();
             int timeLeft = pumpDryRunTime - countEnd + countStart;
             lcdPrint(statusCodes[2] + getFormattedTime(timeLeft, 2), "bm");
@@ -413,6 +441,8 @@ void loop(){
               return;
             }
           }
+          updatePumpRunTime(getSecondsPassed() - pumpRunCountStart);
+          updatePumpReady(false);
           // LOOP exit means pump running proper
         }
         else{
@@ -444,6 +474,7 @@ void loop(){
 
           updateDrainCounter(0);
           while(getPrimarySensor(true) && drainCounter < mainTankEmptyDelay){
+            if (forcePumpOnWithCheck()) return;
             lcdPrint(statusCodes[6] + getFormattedTime(drainCounter++), "tm");
             updateDrainCounter(drainCounter);
             delay(1000);
@@ -488,6 +519,7 @@ void loop(){
               // Serial.print("Will wait for waterEmpty, delay ");
               updateDrainCounter(0);
               while(getPrimarySensor(true)){
+                if (forcePumpOnWithCheck()) return;
                 lcdPrint(statusCodes[6] + getFormattedTime(drainCounter++), "tm");
                 updateDrainCounter(drainCounter);
                 delay(1000);
@@ -499,6 +531,10 @@ void loop(){
               updatePumpReady(true);
               offCountStart = -1;
               offCountEnd = -1;
+            }
+            else{
+              pumpOn();
+              updatePumpRunning(true);
             }
           }
         }
@@ -513,9 +549,9 @@ void loop(){
       offCountStart = getSecondsPassed();
       
       while (getPrimarySensor(true)){
+        if (forcePumpOnWithCheck()) return;
         drainCounter = getSecondsPassed() - offCountStart;
         lcdPrint(statusCodes[6] + getFormattedTime(drainCounter), "tm");
-        updateDrainCounter(drainCounter);
         digitalWrite(primingLED, getSecondsPassed(200) % 2);
       }
       offCountStart = -1;
