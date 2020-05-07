@@ -66,13 +66,16 @@ const int drainingLED = 12;
 const int writeLimitInterval = 5*60;
 
 // Timmer to turn pump off from running state
-const int pumpOffInterval = 2*60;
+const int pumpOffInterval = 3*60;
 
 // Delay for the pump to be in ready state after turning off from main tank full Sensor
 const int mainTankEmptyDelay = 10*60;
 
 // Interval to check when the pump needs manual assistance (Priming Fault)
-const int pumpDryRunTime = 30;
+const int pumpDryRunTime = 1*60;
+
+// Interval to check when the pump needs manual assistance (Priming Fault)
+const int drainTimeLimit = 2*60*60;
 
 ////////////////////////////////////////////////////////////////
 ////////////////////// COUNTER  VARIABLES //////////////////////
@@ -348,8 +351,8 @@ bool pumpOff(){
   return pumpOn(true);
 }
 
-bool forcePumpOnWithCheck(){
-  if((!pumpRunning) && digitalRead(forcePumpOn)){
+bool forcePumpOnWithCheck(bool force = false){
+  if(((!pumpRunning) && digitalRead(forcePumpOn)) || force){
     Serial.println("Turning Pump on forcefully");
     pumpOn();
     offCountStart = -1;
@@ -532,6 +535,10 @@ void loop(){
                 updateDrainCounter(drainCounter);
                 delay(1000);
                 digitalWrite(drainingLED, !digitalRead(drainingLED));
+                
+                if (drainCounter >= drainTimeLimit){
+                  if (forcePumpOnWithCheck(true)) return;
+                }
               }
               digitalWrite(drainingLED, 0);
               updateDrainCounter(0);
@@ -562,6 +569,10 @@ void loop(){
         drainCounter = getSecondsPassed() - offCountStart;
         lcdPrint(statusCodes[6] + getFormattedTime(drainCounter), "tm");
         digitalWrite(primingLED, getSecondsPassed(200) % 2);
+                
+        if (drainCounter >= drainTimeLimit){
+          if (forcePumpOnWithCheck(true)) return;
+        }
       }
       offCountStart = -1;
       digitalWrite(primingLED, 0);
