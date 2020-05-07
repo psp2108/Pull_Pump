@@ -74,8 +74,11 @@ const int mainTankEmptyDelay = 10*60;
 // Interval to check when the pump needs manual assistance (Priming Fault)
 const int pumpDryRunTime = 1*60;
 
-// Interval to check when the pump needs manual assistance (Priming Fault)
+// Force fully turning pump on after following time in drain mode
 const int drainTimeLimit = 2*60*60;
+
+// Not to turn on pump before following time
+const int forceDrainLimit = 3*60;
 
 ////////////////////////////////////////////////////////////////
 ////////////////////// COUNTER  VARIABLES //////////////////////
@@ -529,7 +532,7 @@ void loop(){
               // Should not be like this
               // Serial.print("Will wait for waterEmpty, delay ");
               updateDrainCounter(0);
-              while(getPrimarySensor(true)){
+              while(drainCounter < forceDrainLimit || getPrimarySensor(true)){
                 if (forcePumpOnWithCheck()) return;
                 lcdPrint(statusCodes[6] + getFormattedTime(drainCounter++), "tm");
                 updateDrainCounter(drainCounter);
@@ -564,7 +567,7 @@ void loop(){
       updateDrainCounter(0);
       offCountStart = getSecondsPassed();
       
-      while (getPrimarySensor(true)){
+      while (drainCounter < forceDrainLimit || getPrimarySensor(true)){
         if (forcePumpOnWithCheck()) return;
         drainCounter = getSecondsPassed() - offCountStart;
         lcdPrint(statusCodes[6] + getFormattedTime(drainCounter), "tm");
