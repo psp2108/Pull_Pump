@@ -79,7 +79,7 @@ const int pumpDryRunTime = 1*60+15;
 const int drainTimeLimit = 2*60*60;
 
 // Not to turn on pump before following time
-const int forceDrainLimit = 3*60;
+const int forceDrainLimit = 2*60;
 
 ////////////////////////////////////////////////////////////////
 ////////////////////// COUNTER  VARIABLES //////////////////////
