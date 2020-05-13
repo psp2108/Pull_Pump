@@ -52,6 +52,7 @@ const int pumpControl = A3;
 
 // Force Pump On (Active Low)
 const int forcePumpOn = 10;
+const int forcePumpOn2temp = A1;
 
 // indication LEDs
 const int pumpRunningLED = 13;
@@ -72,7 +73,7 @@ const int pumpOffInterval = 3*60;
 const int mainTankEmptyDelay = 10*60;
 
 // Interval to check when the pump needs manual assistance (Priming Fault)
-const int pumpDryRunTime = 1*60;
+const int pumpDryRunTime = 1*60+15;
 
 // Force fully turning pump on after following time in drain mode
 const int drainTimeLimit = 2*60*60;
@@ -144,6 +145,10 @@ void updatePumpDrained(bool state){
   pumpDrained = state;
 }
 
+unsigned long getSecondsPassed(long inSeconds = 1000){
+  return(millis() / inSeconds);
+}
+
 // EPROM.update() - Update only single byte
 // bitWrite(<num>, <bit from right to left>, bit)
 void updatePumpReady(bool state){
@@ -172,7 +177,7 @@ void updateDrainCounter(int counter){
 void updatePumpRunTime(unsigned long runTime, bool force = false){
   pumpRunTime = runTime;
   if(force){
-    pumpRunCountStart = -1;
+    pumpRunCountStart = getSecondsPassed();
   }
   if (pumpRunTime % writeLimitInterval == 0 || force){
     // Store in to EEPROM (condition check)
@@ -252,10 +257,6 @@ bool getMainTankSensor(){
   if (forceEmpty)
     return false;
   return !digitalRead(mainTankSensor);
-}
-
-unsigned long getSecondsPassed(long inSeconds = 1000){
-  return(millis() / inSeconds);
 }
 
 String getN(int n, String dummy = " "){
@@ -355,7 +356,7 @@ bool pumpOff(){
 }
 
 bool forcePumpOnWithCheck(bool force = false){
-  if(((!pumpRunning) && digitalRead(forcePumpOn)) || force){
+  if(((!pumpRunning) && (digitalRead(forcePumpOn) || !digitalRead(forcePumpOn2temp))) || force){
     Serial.println("Turning Pump on forcefully");
     pumpOn();
     offCountStart = -1;
@@ -486,6 +487,7 @@ void loop(){
           lcdPrint(statusCodes[7] + getFormattedTime(pumpRunTime), "bm");
           Serial.println("LCD Updated");
           lcdPrint(statusCodes[6], "tm");
+          delay(10000);
 
           updateDrainCounter(0);
           while(getPrimarySensor(true) && drainCounter < mainTankEmptyDelay){

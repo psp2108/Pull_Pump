@@ -1,4 +1,5 @@
 # Automatic Water Pull Pump
-## Version 3.2
+## Version 3.3 
 
-- 3 mins compulsory time to wait in drain mode
+- Force start time bug solved
+- Force start enabled on output pin too (REMOVE THIS FUNCTIONALITY LATER AFTER IMPLEMENTING SOLENOID)
