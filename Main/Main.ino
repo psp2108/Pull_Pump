@@ -45,14 +45,14 @@ const int primarySensor = A0;
 const int secondarySensor = A1;
 
 // Sensor 3
-const int mainTankSensor = A2;
+const int mainTankSensor = A4; //A2; temperory
 
 // Pump Control
 const int pumpControl = A3;
 
 // Force Pump On (Active Low)
 const int forcePumpOn = 10;
-const int forcePumpOn2temp = A1;
+const int forcePumpOn2temp = A2;
 
 // indication LEDs
 const int pumpRunningLED = 13;
@@ -73,7 +73,7 @@ const int pumpOffInterval = 3*60;
 const int mainTankEmptyDelay = 10*60;
 
 // Interval to check when the pump needs manual assistance (Priming Fault)
-const int pumpDryRunTime = 1*60+15;
+const int pumpDryRunTime = 3*60;
 
 // Force fully turning pump on after following time in drain mode
 const int drainTimeLimit = 2*60*60;
@@ -253,6 +253,8 @@ bool getSecondarySensor(){
 }
 
 bool getMainTankSensor(){
+  return false; // Disabling the the sensor
+
   // Put not (!) if it is active low
   if (forceEmpty)
     return false;

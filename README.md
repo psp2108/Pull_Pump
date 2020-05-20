@@ -1,6 +1,6 @@
 # Automatic Water Pull Pump
-## Version 3.3 
+## Version 3.4 Temp
 
-- Force start time bug solved
-- Force start enabled on output pin too (REMOVE THIS FUNCTIONALITY LATER AFTER IMPLEMENTING SOLENOID)
-- forceDrainLimit decresed to 2mins
+- Main tank pin changed from A2 to A4 (Temporarily)
+- Pumpforce on pin changed from A1 to A2
+- Pump dry run changed to 3 mins
